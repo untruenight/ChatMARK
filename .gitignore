@@ -1,0 +1,7 @@
+# === System ===
+.DS_Store
+
+# === Build artifacts ===
+node_modules/
+package-lock.json
+dist/
