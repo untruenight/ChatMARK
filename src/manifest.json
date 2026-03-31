@@ -22,12 +22,7 @@
     {
       "matches": [
         "https://chatgpt.com/*",
-        "https://chat.openai.com/*",
-        "https://claude.ai/*",
-        "https://gemini.google.com/*",
-        "https://*.claudemcpcontent.com/*",
-        "https://www.claudeusercontent.com/*",
-        "https://*.claudeusercontent.com/*"
+        "https://chat.openai.com/*"
       ],
       "js": [
         "content.js"
@@ -46,12 +41,7 @@
       "resources": ["fonts/*.woff2"],
       "matches": [
         "https://chatgpt.com/*",
-        "https://chat.openai.com/*",
-        "https://claude.ai/*",
-        "https://gemini.google.com/*",
-        "https://*.claudemcpcontent.com/*",
-        "https://www.claudeusercontent.com/*",
-        "https://*.claudeusercontent.com/*"
+        "https://chat.openai.com/*"
       ]
     }
   ]

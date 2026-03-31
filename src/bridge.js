@@ -17,7 +17,8 @@ import {
   FRAME_RELAY_DEBUG_MESSAGE_TYPE,
   FRAME_RELAY_DEBUG_QUERY_PARAM,
   FRAME_RELAY_DEBUG_STORAGE_KEY,
-  MAX_CAPTURED_SELECTION_LENGTH
+  MAX_CAPTURED_SELECTION_LENGTH,
+  ALLOWED_FRAME_ORIGINS
 } from './constants.js';
 import { safePostMessageToTarget, logWarn } from './log.js';
 import { normalizeText, truncateText, fingerprintText, clamp } from './text.js';
@@ -462,6 +463,11 @@ function handleIncomingFrameRelayDebugState(payload) {
 
 export function handleFrameRelayMessage(event) {
   if (!event || !event.data || typeof event.data !== "object") {
+    return;
+  }
+
+  // origin 검증: 허용된 도메인에서 온 메시지만 처리
+  if (ALLOWED_FRAME_ORIGINS.indexOf(event.origin) < 0) {
     return;
   }
 

@@ -83,11 +83,12 @@ export const SITE_PROFILES = [
 
 export const ALLOWED_FRAME_ORIGINS = [
   "https://chatgpt.com",
-  "https://chat.openai.com",
-  "https://claude.ai",
-  "https://gemini.google.com",
-  "https://www.claudeusercontent.com",
-  "https://www.claudemcpcontent.com"
+  "https://chat.openai.com"
+  // Claude/Gemini 지원 재개 시 복원:
+  // "https://claude.ai",
+  // "https://gemini.google.com",
+  // "https://www.claudeusercontent.com",
+  // "https://www.claudemcpcontent.com"
 ];
 
 // ---- Layout dimensions (px) ----
