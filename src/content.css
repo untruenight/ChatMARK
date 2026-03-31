@@ -708,7 +708,7 @@
   position: absolute;
   right: 0;
   width: 160px;
-  height: 34px;
+  height: 40px;
   overflow: visible;
   pointer-events: auto;
   transform: translateY(var(--cgptbm-tab-drag-translate-y, 0px));
@@ -769,7 +769,7 @@
   top: 0;
   right: 0;
   width: 18px;
-  height: var(--cgptbm-surface-height, 34px);
+  height: var(--cgptbm-surface-height, 40px);
   overflow: hidden;
   transition: width 140ms ease, height 150ms ease;
 }
@@ -790,7 +790,7 @@
   top: 0;
   right: 18px;
   width: var(--cgptbm-collapsed-left-hover-zone-width, 40px);
-  height: 34px;
+  height: 40px;
   display: block;
   pointer-events: auto;
   z-index: 1;
@@ -806,7 +806,7 @@
   top: 0;
   right: 0;
   left: 0;
-  height: var(--cgptbm-surface-height, 34px);
+  height: var(--cgptbm-surface-height, 40px);
   display: flex;
   align-items: stretch;
   gap: 0;
@@ -1009,7 +1009,7 @@
 }
 
 .cgptbm-tab.is-expanded .cgptbm-tab__content {
-  min-height: 34px; /* Unified with collapsed tab height */
+  min-height: 40px; /* Unified with collapsed tab height */
   padding-left: 8px;
 }
 
@@ -1037,7 +1037,7 @@
   right: -28px;
   z-index: 2;
   width: 28px;
-  height: var(--cgptbm-surface-height, 34px);
+  height: var(--cgptbm-surface-height, 40px);
   flex-direction: column;
   gap: 4px;
   justify-content: center;
@@ -1235,7 +1235,7 @@
   top: 0;
   left: -28px;
   width: 30px;
-  height: var(--cgptbm-surface-height, 34px);
+  height: var(--cgptbm-surface-height, 40px);
   z-index: 3;
   display: none;
   align-items: center;
@@ -1278,13 +1278,22 @@
 
 .cgptbm-tab__popup {
   position: absolute;
-  top: calc(var(--cgptbm-surface-height, 34px) + 4px);
+  top: calc(var(--cgptbm-surface-height, 40px) + 4px);
   right: 4px;
   width: 142px;
   padding: 10px 12px 12px;
   border: 1px solid rgba(202, 138, 4, 0.28);
   border-radius: 14px 5px 14px 14px;
-  background: #e0e0e0;
+  background:
+    linear-gradient(to bottom,
+      transparent calc(100% - 20px),
+      rgba(0,0,0,0.06) calc(100% - 6px),
+      rgba(0,0,0,0.80) 100%),
+    linear-gradient(to right,
+      transparent calc(100% - 20px),
+      rgba(0,0,0,0.04) calc(100% - 6px),
+      rgba(0,0,0,0.50) 100%),
+    #e0e0e0;
   box-shadow:
     0 18px 32px rgba(15, 23, 42, 0.18),
     0 0 0 1px rgba(255, 255, 255, 0.24) inset;
