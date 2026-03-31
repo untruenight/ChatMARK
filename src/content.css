@@ -1,3 +1,27 @@
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/Inter-Regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/Inter-Bold.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('fonts/Inter-ExtraBold.woff2') format('woff2');
+}
+
 #cgptbm-root {
   /* --- Design tokens: base RGB channels for theming --- */
   --cgptbm-c-slate-900: 15, 23, 42;
@@ -24,7 +48,7 @@
   height: 100vh;
   pointer-events: none;
   z-index: 2147483646;
-  font-family: Arial, sans-serif;
+  font-family: 'Inter', Arial, sans-serif;
   overflow: visible;
   transition: right 160ms ease, width 140ms ease;
 }
@@ -1505,18 +1529,18 @@
   position: fixed;
   top: 0;
   left: 0;
-  width: 64px;
-  height: 28px;
+  width: 56px;
+  height: 20px;
   padding: 0 8px;
   box-sizing: border-box;
-  border: 1px solid rgba(120, 53, 15, 0.38);
+  border: 1px solid rgba(105, 38, 7, 0.38);
   border-radius: 999px;
-  background: linear-gradient(180deg, rgba(251, 191, 36, 0.98), rgba(245, 158, 11, 0.98));
-  color: #111827;
-  font: inherit;
-  font-size: 11px;
+  background: linear-gradient(180deg, rgba(250, 150, 80, 0.98), rgba(160, 45, 0, 0.98));
+  color: #ffffff;
+  font-family: 'Inter', Arial, sans-serif;
+  font-size: 14px;
   font-weight: 800;
-  line-height: 26px;
+  line-height: 18px;
   letter-spacing: 0.04em;
   box-shadow: 0 10px 24px rgba(120, 53, 15, 0.28), 0 0 0 1px rgba(255, 255, 255, 0.18);
   cursor: pointer;
@@ -1527,7 +1551,7 @@
 .cgptbm-selection-trigger:hover,
 .cgptbm-selection-trigger:focus-visible {
   outline: none;
-  background: linear-gradient(180deg, rgba(252, 211, 77, 0.99), rgba(245, 158, 11, 0.99));
+  background: linear-gradient(180deg, rgba(255, 170, 100, 0.99), rgba(160, 45, 0, 0.99));
 }
 
 .cgptbm-sandbox-card-layer {
@@ -1823,5 +1847,69 @@
   100% {
     box-shadow: 0 0 0 10px rgba(245, 158, 11, 0);
     background: linear-gradient(180deg, rgba(254, 243, 199, 0), rgba(255, 255, 255, 0));
+  }
+}
+
+/* ---- Update banner ---- */
+.cgptbm-update-banner {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 2147483646;
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 16px 20px;
+  max-width: 300px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #ddd;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  animation: cgptbm-banner-in 0.3s ease-out;
+}
+
+.cgptbm-update-banner__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #f59e0b;
+  margin-bottom: 10px;
+}
+
+.cgptbm-update-banner__list {
+  margin: 0;
+  padding: 0 0 0 16px;
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: #aaa;
+}
+
+.cgptbm-update-banner__list li {
+  margin-bottom: 2px;
+}
+
+.cgptbm-update-banner__close {
+  display: block;
+  margin: 12px 0 0 auto;
+  padding: 5px 18px;
+  background: #f59e0b;
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cgptbm-update-banner__close:hover {
+  background: #d97706;
+}
+
+@keyframes cgptbm-banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

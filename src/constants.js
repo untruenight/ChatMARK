@@ -16,6 +16,11 @@ export const RAIL_ENABLED_STORAGE_KEY = "bookmarkRailEnabled";
 export const POPUP_LIST_MARKER_ATTR = "data-cgptbm-popup-marker";
 export const POPUP_LIST_LEAD_MARKER_ATTR = "data-cgptbm-popup-lead-marker";
 export const LEGACY_STORAGE_KEYS = ["chatgptBookmarksByUrl", "bookmarks"];
+
+// ---- 도메인 별칭 (도메인 변경 시 기존 저장소 키 호환 유지) ----
+export const ORIGIN_ALIASES = {
+  "https://chat.openai.com": "https://chatgpt.com",
+};
 export const HIGHLIGHT_CLASS = "cgptbm-target-highlight";
 export const SELECTION_TRIGGER_LABEL = "MARK";
 export const DEFAULT_BOOKMARK_LABEL = "Unnamed";
@@ -107,8 +112,8 @@ export const POPUP_MIN_HEIGHT = 64;
 export const POPUP_MAX_HEIGHT = 420;
 
 // ---- Selection UI dimensions (px) ----
-export const SELECTION_TRIGGER_WIDTH = 64;
-export const SELECTION_TRIGGER_HEIGHT = 28;
+export const SELECTION_TRIGGER_WIDTH = 56;
+export const SELECTION_TRIGGER_HEIGHT = 20;
 export const SELECTION_POPUP_WIDTH = 198;
 export const SELECTION_POPUP_HEIGHT = 56;
 export const SELECTION_UI_GAP = 8;
@@ -126,7 +131,8 @@ export const SELECTION_UI_BLOCKER_SELECTOR = [
   "[role='listbox']",
   "[data-radix-popper-content-wrapper]",
   "[data-radix-dropdown-menu-content]",
-  "[data-radix-popover-content]"
+  "[data-radix-popover-content]",
+  "[aria-live='polite'].fixed"
 ].join(", ");
 
 // ---- Limits ----
@@ -182,3 +188,17 @@ export const SANDBOX_CARD_HIGHLIGHT_EXIT_FADE_OUT_DURATION = 200;
 // ---- Frame relay debug ----
 export const FRAME_RELAY_DEBUG_QUERY_PARAM = "cgptbmFrameDebug";
 export const FRAME_RELAY_DEBUG_STORAGE_KEY = "cgptbm:debug:frame-relay";
+
+// ---- Update banner ----
+export const APP_VERSION = "1.0.0";
+export const UPDATE_DISMISSED_STORAGE_KEY = "cgptbm:update:dismissed";
+export const RELEASE_NOTES = {
+  "1.0.0": [
+    "First official release",
+    "Bookmark any text in ChatGPT conversations",
+    "Color-coded tabs on right-side rail",
+    "Drag-and-drop reorder, pin, and expand",
+    "Current-page bookmark search",
+    "Undo/redo support"
+  ]
+};

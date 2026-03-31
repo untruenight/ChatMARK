@@ -130,24 +130,20 @@ export function getSelectionClientRect(selection) {
   }
 
   const range = selection.getRangeAt(0);
-  const rects = Array.from(range.getClientRects()).filter(function (rect) {
-    return rect && (rect.width > 0 || rect.height > 0);
-  });
-  const isBackward = isSelectionBackward(selection);
-  const rect = (isBackward ? rects[0] : rects[rects.length - 1]) || range.getBoundingClientRect();
+  const boundingRect = range.getBoundingClientRect();
 
-  if (!rect || (!rect.width && !rect.height)) {
+  if (!boundingRect || (!boundingRect.width && !boundingRect.height)) {
     return null;
   }
 
   return {
-    top: rect.top,
-    right: rect.right,
-    bottom: rect.bottom,
-    left: rect.left,
-    width: rect.width,
-    height: rect.height,
-    isBackward: isBackward
+    top: boundingRect.top,
+    right: boundingRect.right,
+    bottom: boundingRect.bottom,
+    left: boundingRect.left,
+    width: boundingRect.width,
+    height: boundingRect.height,
+    isBackward: isSelectionBackward(selection)
   };
 }
 
@@ -373,9 +369,9 @@ export function computeSelectionUiPosition(rect) {
     return null;
   }
 
-  const verticalOrder = rect.top - SELECTION_TRIGGER_HEIGHT - SELECTION_UI_GAP >= SELECTION_UI_VIEWPORT_GAP
-    ? ["above", "below"]
-    : ["below", "above"];
+  const verticalOrder = rect.bottom + SELECTION_TRIGGER_HEIGHT + SELECTION_UI_GAP <= window.innerHeight - SELECTION_UI_VIEWPORT_GAP
+    ? ["below", "above"]
+    : ["above", "below"];
   const horizontalOrder = rect.isBackward ? ["left", "right"] : ["right", "left"];
   const blockerRects = getSelectionUiBlockerRects(rect);
   let bestCandidate = null;

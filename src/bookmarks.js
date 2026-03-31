@@ -22,6 +22,7 @@ import {
   MIN_RAIL_OPACITY,
   MAX_RAIL_OPACITY,
   PRIMARY_STORAGE_KEY,
+  ORIGIN_ALIASES,
   SITE_PROFILES,
   DEFAULT_CONVERSATION_PATH_TOKENS,
   DEFAULT_CONVERSATION_QUERY_KEYS,
@@ -92,6 +93,10 @@ export function getCurrentUrlKey() {
   return normalizeUrlKey(window.location.href);
 }
 
+/**
+ * ⚠️ STORAGE-CRITICAL: 이 함수의 출력이 모든 v2 샤드 키의 근간입니다.
+ * 출력 형식(origin + "/c/" + id)을 변경하면 기존 저장 데이터 전체가 접근 불가능해집니다.
+ */
 export function normalizeUrlKey(input) {
   if (!input) {
     return "";
@@ -100,6 +105,12 @@ export function normalizeUrlKey(input) {
   try {
     const url = new URL(input, window.location.origin);
     url.hash = "";
+    const alias = ORIGIN_ALIASES[url.origin];
+    if (alias) {
+      const aliasUrl = new URL(alias);
+      url.hostname = aliasUrl.hostname;
+      url.protocol = aliasUrl.protocol;
+    }
     const conversationId = extractConversationIdFromUrl(url);
     if (conversationId) {
       return buildConversationUrlKey(url, conversationId);
@@ -244,6 +255,10 @@ function isLikelyConversationIdSegment(segment) {
   );
 }
 
+/**
+ * ⚠️ STORAGE-CRITICAL: 출력 형식(origin + "/c/" + id)을 변경하면
+ * 기존 저장 데이터 전체가 접근 불가능해집니다.
+ */
 function buildConversationUrlKey(url, conversationId) {
   return url.origin + "/c/" + encodeURIComponent(conversationId);
 }

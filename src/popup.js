@@ -58,7 +58,7 @@ export function setPopupCallbacks(callbacks) {
 
 function getCanvasFontShorthand(style) {
   if (!style) {
-    return '500 11px Arial, sans-serif';
+    return "500 11px 'Inter', Arial, sans-serif";
   }
 
   if (style.font) {
@@ -70,7 +70,7 @@ function getCanvasFontShorthand(style) {
     style.fontVariant || "normal",
     style.fontWeight || "400",
     style.fontSize || "11px",
-    style.fontFamily || "Arial, sans-serif"
+    style.fontFamily || "'Inter', Arial, sans-serif"
   ].join(" ");
 }
 

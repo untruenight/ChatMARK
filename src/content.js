@@ -8,6 +8,8 @@
 // ============================================================
 
 // --- State & Constants ---
+import { storageGet, storageSet } from './storage.js';
+import { logWarn } from './log.js';
 import state from './state.js';
 import {
   ROOT_ID,
@@ -24,7 +26,10 @@ import {
   RAIL_VIEWPORT_WIDTH,
   RAIL_LAYER_LEFT_BLEED,
   RAIL_LAYER_RIGHT_BLEED,
-  DEFAULT_RAIL_OPACITY
+  DEFAULT_RAIL_OPACITY,
+  APP_VERSION,
+  UPDATE_DISMISSED_STORAGE_KEY,
+  RELEASE_NOTES
 } from './constants.js';
 
 // --- Store ---
@@ -338,6 +343,7 @@ setHistoryCallbacks({
       syncFrameRelayDebugState();
       scheduleSandboxCardTriggerRender();
       loadBookmarks();
+      showUpdateBannerIfNeeded();
     };
 
     if (document.body) {
@@ -652,6 +658,56 @@ setHistoryCallbacks({
     loadBookmarks();
   }
 
+  // ---- showUpdateBannerIfNeeded: 업데이트 배너 ----
+  async function showUpdateBannerIfNeeded() {
+    try {
+      var raw = await storageGet([UPDATE_DISMISSED_STORAGE_KEY]);
+      var dismissed = raw[UPDATE_DISMISSED_STORAGE_KEY] || "";
+      if (dismissed === APP_VERSION) {
+        return;
+      }
+
+      var notes = RELEASE_NOTES[APP_VERSION];
+      if (!notes || !notes.length) {
+        return;
+      }
+
+      var banner = document.createElement("div");
+      banner.className = "cgptbm-update-banner";
+
+      var title = document.createElement("div");
+      title.className = "cgptbm-update-banner__title";
+      title.textContent = "ChatMARK updated to v" + APP_VERSION;
+
+      var list = document.createElement("ul");
+      list.className = "cgptbm-update-banner__list";
+      notes.forEach(function (note) {
+        var item = document.createElement("li");
+        item.textContent = note;
+        list.appendChild(item);
+      });
+
+      var closeBtn = document.createElement("button");
+      closeBtn.type = "button";
+      closeBtn.className = "cgptbm-update-banner__close";
+      closeBtn.textContent = "OK";
+      closeBtn.addEventListener("click", function () {
+        banner.remove();
+        storageSet({ [UPDATE_DISMISSED_STORAGE_KEY]: APP_VERSION });
+      });
+
+      banner.appendChild(title);
+      banner.appendChild(list);
+      banner.appendChild(closeBtn);
+
+      if (state.root) {
+        state.root.appendChild(banner);
+      }
+    } catch (error) {
+      logWarn("showUpdateBannerIfNeeded failed", error);
+    }
+  }
+
   // ---- handleUrlChange: SPA URL 변경 감지 ----
   function handleUrlChange() {
     if (window.location.href === state.lastHref) {
@@ -700,21 +756,6 @@ setHistoryCallbacks({
       }
     }
 
-    if (!event.altKey || event.shiftKey || event.ctrlKey || event.metaKey) {
-      return;
-    }
-
-    if (event.key.toLowerCase() !== "b") {
-      return;
-    }
-
-    event.preventDefault();
-    handleAddBookmark();
-  }
-
-  // ---- handleAddBookmark: Alt+B 단축키 핸들러 ----
-  async function handleAddBookmark() {
-    startBookmarkFlow();
   }
 
   // ---- hasBookmarkShardIndexEntry: 인라인 헬퍼 ----

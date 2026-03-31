@@ -49,6 +49,10 @@ export function truncateRawText(value, maxLength) {
  * 비유: 사람의 지문처럼, 텍스트를 짧은 고유 문자열로 요약합니다.
  * 앞 320자만 샘플링하여 FNV-1a 변형 해시를 적용합니다.
  * 결과: "길이:해시" (예: "156:a3f2b1")
+ *
+ * ⚠️ STORAGE-CRITICAL: 이 함수의 출력은 저장된 북마크의 anchor 매칭에 사용됩니다.
+ * 알고리즘, seed(2166136261), 샘플 길이(320), 연산 순서를 변경하면
+ * 기존 저장 데이터의 anchor 매칭이 깨집니다.
  */
 export function fingerprintText(value) {
   const normalized = normalizeText(value).toLowerCase();
@@ -68,6 +72,10 @@ export function fingerprintText(value) {
 
 /**
  * 원본 텍스트(코드 등)의 지문. 앞 480자 샘플링.
+ *
+ * ⚠️ STORAGE-CRITICAL: 이 함수의 출력이 chrome.storage.local 키의 근간입니다.
+ * 알고리즘, seed(2166136261), 샘플 길이(480), 연산 순서를 변경하면
+ * 기존 저장 데이터 전체가 접근 불가능해집니다.
  */
 export function fingerprintRawText(value) {
   const rawText = String(value || "");

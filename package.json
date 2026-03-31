@@ -1,13 +1,15 @@
 {
   "name": "chatmarkup-extension",
-  "version": "0.3.0",
+  "version": "1.0.0",
   "private": true,
   "description": "ChatMARKup - Bookmark tabs for AI chat conversations",
   "scripts": {
     "build": "esbuild src/content.js --bundle --outfile=dist/content.js --format=iife --target=chrome110",
     "build:css": "cp src/content.css dist/content.css",
+    "build:fonts": "mkdir -p dist/fonts && cp src/fonts/*.woff2 dist/fonts/",
     "build:manifest": "cp src/manifest.json dist/manifest.json",
-    "build:all": "mkdir -p dist && npm run build && npm run build:css && npm run build:manifest",
+    "build:icons": "mkdir -p dist/icons && cp src/icons/* dist/icons/",
+    "build:all": "mkdir -p dist && npm run build && npm run build:css && npm run build:fonts && npm run build:icons && npm run build:manifest",
     "watch": "esbuild src/content.js --bundle --outfile=dist/content.js --format=iife --target=chrome110 --watch",
     "dev": "npm run build:all && npm run watch"
   },

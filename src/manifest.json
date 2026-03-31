@@ -1,8 +1,20 @@
 {
   "manifest_version": 3,
   "name": "ChatMARKup Beta - Current Page Search",
-  "version": "0.2.1",
+  "version": "1.0.0",
   "description": "Save lightweight bookmark tabs for ChatGPT, Claude, Gemini, and Codex web conversations, with current-page bookmark search.",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png"
+    },
+    "default_title": "ChatMARKup"
+  },
   "permissions": [
     "storage"
   ],
@@ -27,6 +39,20 @@
       "all_frames": true,
       "match_about_blank": true,
       "match_origin_as_fallback": true
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["fonts/*.woff2"],
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://claude.ai/*",
+        "https://gemini.google.com/*",
+        "https://*.claudemcpcontent.com/*",
+        "https://www.claudeusercontent.com/*",
+        "https://*.claudeusercontent.com/*"
+      ]
     }
   ]
 }
