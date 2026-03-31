@@ -8,7 +8,7 @@
 // ============================================================
 
 // --- State & Constants ---
-import { storageGet, storageSet } from './storage.js';
+import { storageGet, storageSet, storageRemove } from './storage.js';
 import { logWarn } from './log.js';
 import state from './state.js';
 import {
@@ -661,6 +661,13 @@ setHistoryCallbacks({
   // ---- showUpdateBannerIfNeeded: 업데이트 배너 ----
   async function showUpdateBannerIfNeeded() {
     try {
+      // 세션 메모리 체크 (현재 세션에서 이미 닫은 경우)
+      if (state._updateBannerDismissed === APP_VERSION) {
+        return;
+      }
+      // 영구 스토리지 체크 (영구 dismiss 활성화 시 사용)
+      // TODO: 기존 저장값 정리 — 세션 전용 전환 후 1회 배포 뒤 제거 가능
+      await storageRemove(UPDATE_DISMISSED_STORAGE_KEY);
       var raw = await storageGet([UPDATE_DISMISSED_STORAGE_KEY]);
       var dismissed = raw[UPDATE_DISMISSED_STORAGE_KEY] || "";
       if (dismissed === APP_VERSION) {
@@ -675,9 +682,31 @@ setHistoryCallbacks({
       var banner = document.createElement("div");
       banner.className = "cgptbm-update-banner";
 
+      var isFirstInstall = !dismissed;
+
       var title = document.createElement("div");
       title.className = "cgptbm-update-banner__title";
-      title.textContent = "ChatMARK updated to v" + APP_VERSION;
+      if (isFirstInstall) {
+        var prefix = document.createElement("span");
+        prefix.className = "cgptbm-update-banner__title-prefix";
+        prefix.textContent = "Thanks for having ";
+        var brand = document.createElement("span");
+        var brandChat = document.createElement("span");
+        brandChat.className = "cgptbm-update-banner__brand-chat";
+        brandChat.textContent = "Chat";
+        var brandMark = document.createElement("span");
+        brandMark.textContent = "MARK";
+        brand.appendChild(brandChat);
+        brand.appendChild(brandMark);
+        title.appendChild(prefix);
+        title.appendChild(brand);
+      } else {
+        title.textContent = "ChatMARK updated to v" + APP_VERSION;
+      }
+
+      var subtitle = document.createElement("div");
+      subtitle.className = "cgptbm-update-banner__subtitle";
+      subtitle.textContent = "v" + APP_VERSION;
 
       var list = document.createElement("ul");
       list.className = "cgptbm-update-banner__list";
@@ -693,10 +722,14 @@ setHistoryCallbacks({
       closeBtn.textContent = "OK";
       closeBtn.addEventListener("click", function () {
         banner.remove();
-        storageSet({ [UPDATE_DISMISSED_STORAGE_KEY]: APP_VERSION });
+        // 세션 메모리만 — 익스텐션 재시작 시 다시 표시됨
+        // 영구 dismiss로 전환하려면 아래 주석을 해제:
+        // storageSet({ [UPDATE_DISMISSED_STORAGE_KEY]: APP_VERSION });
+        state._updateBannerDismissed = APP_VERSION;
       });
 
       banner.appendChild(title);
+      banner.appendChild(subtitle);
       banner.appendChild(list);
       banner.appendChild(closeBtn);
 

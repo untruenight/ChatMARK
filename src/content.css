@@ -1853,63 +1853,94 @@
 /* ---- Update banner ---- */
 .cgptbm-update-banner {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   z-index: 2147483646;
+  pointer-events: auto;
   background: #1e1e1e;
   border: 1px solid #333;
-  border-radius: 12px;
-  padding: 16px 20px;
-  max-width: 300px;
+  border-radius: 16px;
+  padding: 28px 32px;
+  width: 380px;
+  max-width: 90vw;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: #ddd;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
   animation: cgptbm-banner-in 0.3s ease-out;
 }
 
 .cgptbm-update-banner__title {
-  font-size: 13px;
-  font-weight: 600;
-  color: #f59e0b;
-  margin-bottom: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #e87840;
+  margin-bottom: 4px;
+}
+
+.cgptbm-update-banner__title-prefix {
+  color: #bbb;
+}
+
+.cgptbm-update-banner__brand-chat {
+  color: #fff;
+  font-weight: 400;
+  font-size: 14px;
+}
+
+.cgptbm-update-banner__subtitle {
+  font-size: 12px;
+  color: #777;
+  margin-bottom: 16px;
 }
 
 .cgptbm-update-banner__list {
   margin: 0;
-  padding: 0 0 0 16px;
-  font-size: 11.5px;
-  line-height: 1.7;
-  color: #aaa;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  line-height: 1.8;
+  color: #bbb;
 }
 
 .cgptbm-update-banner__list li {
-  margin-bottom: 2px;
+  margin-bottom: 4px;
+  padding-left: 20px;
+  position: relative;
+}
+
+.cgptbm-update-banner__list li::before {
+  content: "\25CF";
+  position: absolute;
+  left: 0;
+  color: #e87840;
+  font-size: 8px;
+  top: 6px;
 }
 
 .cgptbm-update-banner__close {
   display: block;
-  margin: 12px 0 0 auto;
-  padding: 5px 18px;
-  background: #f59e0b;
-  color: #000;
+  margin: 20px auto 0;
+  padding: 8px 32px;
+  background: #e87840;
+  color: #fff;
   border: none;
-  border-radius: 6px;
-  font-size: 12px;
+  border-radius: 8px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .cgptbm-update-banner__close:hover {
-  background: #d97706;
+  background: #d06830;
 }
 
 @keyframes cgptbm-banner-in {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translate(-50%, -50%) scale(0.95);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate(-50%, -50%) scale(1);
   }
 }
