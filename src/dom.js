@@ -60,6 +60,17 @@ function detectMessageRoleFromSignals(value) {
   return "";
 }
 
+function hasExplicitRoleAttribute(element) {
+  if (!element || !element.getAttribute) {
+    return false;
+  }
+  return Boolean(
+    element.getAttribute("data-message-author-role") ||
+    element.getAttribute("data-author-role") ||
+    element.getAttribute("data-role")
+  );
+}
+
 function isLikelyMessageContainer(element) {
   if (!element || !(element instanceof Element)) {
     return false;
@@ -82,6 +93,11 @@ function isLikelyMessageContainer(element) {
   const style = window.getComputedStyle(element);
   if (style.display === "none" || style.visibility === "hidden" || style.position === "fixed" || style.position === "sticky") {
     return false;
+  }
+
+  // Elements with explicit role attributes are always accepted (even short user messages)
+  if (hasExplicitRoleAttribute(element)) {
+    return true;
   }
 
   const text = getElementText(element);
@@ -265,7 +281,19 @@ export function findUserMessageTextContainer(message) {
     return null;
   }
 
-  // Look for div with direct text content (e.g., ChatGPT's whitespace-pre-wrap div)
+  // Site-profile-aware selector (Solution D)
+  var profile = getCurrentSiteProfile();
+  if (profile && profile.userTextSelector) {
+    var candidates = message.querySelectorAll(profile.userTextSelector);
+    for (var j = 0; j < candidates.length; j += 1) {
+      var candidate = candidates[j];
+      if (isVisibleBlock(candidate) && getElementText(candidate).length >= 2) {
+        return candidate;
+      }
+    }
+  }
+
+  // Fallback: div with direct text content (e.g., ChatGPT's whitespace-pre-wrap div)
   var divs = message.querySelectorAll("div");
   for (var i = 0; i < divs.length; i += 1) {
     var div = divs[i];

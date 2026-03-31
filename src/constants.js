@@ -53,7 +53,8 @@ export const SITE_PROFILES = [
     scopeSelectors: ["main", "[role='main']"],
     conversationPathTokens: ["c", "chat", "conversation", "conversations", "codex"],
     conversationQueryKeys: ["conversationId", "conversation_id", "chatId", "chat_id", "threadId", "thread_id", "c"],
-    messageIdAttr: "data-message-id"
+    messageIdAttr: "data-message-id",
+    userTextSelector: ""
   },
   {
     id: "claude",
@@ -61,7 +62,8 @@ export const SITE_PROFILES = [
     scopeSelectors: ["main", "[role='main']"],
     conversationPathTokens: ["chat", "conversation", "conversations", "project"],
     conversationQueryKeys: ["conversationId", "conversation_id", "chatId", "chat_id", "threadId", "thread_id", "c"],
-    messageIdAttr: ""
+    messageIdAttr: "",
+    userTextSelector: "p, div[class*='user'], div[class*='human']"
   },
   {
     id: "gemini",
@@ -69,7 +71,8 @@ export const SITE_PROFILES = [
     scopeSelectors: ["main", "[role='main']"],
     conversationPathTokens: ["app", "chat", "conversation", "conversations"],
     conversationQueryKeys: ["conversationId", "conversation_id", "chatId", "chat_id", "threadId", "thread_id", "c"],
-    messageIdAttr: ""
+    messageIdAttr: "",
+    userTextSelector: "p, div[data-text-content], div[class*='query']"
   }
 ];
 

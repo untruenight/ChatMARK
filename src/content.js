@@ -175,7 +175,10 @@ import {
 } from './sandbox-card.js';
 
 // --- Anchor: Capture ---
-import { setCaptureSelectionCallbacks } from './capture.js';
+import { setCaptureSelectionCallbacks, setCaptureResolveCallbacks } from './capture.js';
+
+// --- Anchor: Resolve (capture 콜백 와이어링용) ---
+import { buildTargetTextMap, domPositionToRawOffset } from './resolve.js';
 
 
 // ============================================================
@@ -206,6 +209,12 @@ setSandboxCardUiCallbacks({
 setCaptureSelectionCallbacks({
   getSelectionElement: getSelectionElement,
   isEditableTextSelectionTarget: isEditableTextSelectionTarget
+});
+
+// capture.js ← resolve 콜백 (순환 의존 방지)
+setCaptureResolveCallbacks({
+  buildTargetTextMap: buildTargetTextMap,
+  domPositionToRawOffset: domPositionToRawOffset
 });
 
 // highlight.js ← scroll 콜백

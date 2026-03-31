@@ -99,20 +99,19 @@ export function scheduleTargetHighlight(target, bookmark, options) {
 function runTargetHighlight(target, bookmark, options) {
   const nextOptions = options || {};
 
-  // User message-specific inline highlighting
+  // User message-specific highlighting — dedicated path
   var anchor = bookmark && bookmark.anchor ? bookmark.anchor : null;
   if (anchor && anchor.messageRole === "user") {
-    var message = findMessageContainer(target) || target;
-    var userTextContainer = findUserMessageTextContainer(message);
-    if (userTextContainer) {
-      var userResult = highlightInlineText(userTextContainer, bookmark, null);
-      if (userResult) {
-        if (_advanceScrollProgress) _advanceScrollProgress(0.76);
-        microScrollHighlightIntoView(userResult.node, userResult.mode);
-        return;
-      }
+    var userHighlight = runUserBlockHighlight(target, bookmark);
+    if (userHighlight) {
+      return;
     }
+    // All user highlight attempts failed — pulse the target and ensure visibility
+    pulseTargetIntoView(target);
+    return;
   }
+
+  // ---- Assistant / generic highlight (unchanged) ----
 
   if (nextOptions.preferBlockHighlight || shouldPreferBlockHighlight(bookmark)) {
     pulseTarget(target);
@@ -143,6 +142,141 @@ function runTargetHighlight(target, bookmark, options) {
   if (sentenceResult) {
     microScrollHighlightIntoView(sentenceResult.node, "text");
     return;
+  }
+
+  pulseTarget(target);
+  if (_finishHiddenScrollTransaction) _finishHiddenScrollTransaction();
+}
+
+// ============================================================
+// User block highlight — dedicated path
+// ============================================================
+
+function runUserBlockHighlight(target, bookmark) {
+  var anchor = bookmark && bookmark.anchor ? bookmark.anchor : null;
+  var message = findMessageContainer(target) || target;
+
+  // Attempt 1: existing user text container path
+  var userTextContainer = findUserMessageTextContainer(message);
+  if (userTextContainer) {
+    var userResult = highlightInlineText(userTextContainer, bookmark, null);
+    if (userResult) {
+      if (_advanceScrollProgress) _advanceScrollProgress(0.76);
+      microScrollHighlightIntoView(userResult.node, userResult.mode);
+      return true;
+    }
+  }
+
+  // Attempt 2: direct text search within the entire user message
+  var selectionText = normalizeText(
+    (anchor && anchor.selectionTextRaw) || (anchor && anchor.selectionText) || (bookmark && bookmark.snippet) || ""
+  );
+  if (selectionText && selectionText.length >= 2) {
+    var directResult = highlightUserDirectText(message, selectionText);
+    if (directResult) {
+      if (_advanceScrollProgress) _advanceScrollProgress(0.76);
+      microScrollHighlightIntoView(directResult.node, "text");
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function highlightUserDirectText(container, selectionText) {
+  if (!container || !selectionText) {
+    return null;
+  }
+
+  var textMap = buildTargetTextMap(container, { preserveWhitespace: true });
+  if (!textMap || !textMap.rawText) {
+    return null;
+  }
+
+  // Simple normalized substring search
+  var normalizedRaw = normalizeText(textMap.rawText);
+  var needle = selectionText.toLowerCase();
+  var haystack = normalizedRaw.toLowerCase();
+  var matchIndex = haystack.indexOf(needle);
+  if (matchIndex < 0) {
+    return null;
+  }
+
+  // Map normalized offset to raw offset
+  var rawStart = mapNormalizedToRaw(textMap.rawText, normalizedRaw, matchIndex);
+  var rawEnd = mapNormalizedToRaw(textMap.rawText, normalizedRaw, matchIndex + needle.length);
+  if (rawStart < 0 || rawEnd <= rawStart) {
+    return null;
+  }
+
+  var startPos = rawOffsetToDomPosition(textMap.segments, rawStart, false);
+  var endPos = rawOffsetToDomPosition(textMap.segments, rawEnd, true);
+  if (!startPos || !endPos) {
+    return null;
+  }
+
+  var match = {
+    startNode: startPos.node,
+    startOffset: startPos.offset,
+    endNode: endPos.node,
+    endOffset: endPos.offset
+  };
+
+  var highlightNode = wrapTextMatch(match);
+  if (!highlightNode) {
+    return null;
+  }
+
+  state.highlightedInlineNode = highlightNode;
+  state.highlightTimer = window.setTimeout(clearHighlightState, 2000);
+  return {
+    node: highlightNode,
+    shouldMicroScroll: true,
+    mode: "text"
+  };
+}
+
+function mapNormalizedToRaw(rawText, normalizedText, normalizedOffset) {
+  if (normalizedOffset <= 0) return 0;
+  if (normalizedOffset >= normalizedText.length) return rawText.length;
+
+  var normalizedPos = 0;
+  var rawPos = 0;
+  var inWhitespace = false;
+
+  while (rawPos < rawText.length && normalizedPos < normalizedOffset) {
+    var ch = rawText[rawPos];
+    if (/\s/.test(ch)) {
+      if (!inWhitespace && normalizedPos > 0) {
+        normalizedPos += 1;
+        inWhitespace = true;
+      }
+      rawPos += 1;
+    } else {
+      inWhitespace = false;
+      normalizedPos += 1;
+      rawPos += 1;
+    }
+  }
+
+  while (rawPos < rawText.length && /\s/.test(rawText[rawPos]) && inWhitespace) {
+    rawPos += 1;
+  }
+
+  return rawPos;
+}
+
+function pulseTargetIntoView(target) {
+  if (!target) {
+    if (_finishHiddenScrollTransaction) _finishHiddenScrollTransaction();
+    return;
+  }
+
+  // Ensure target is visible in viewport before pulsing
+  var rect = target.getBoundingClientRect();
+  var viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+  if (rect.top < 0 || rect.bottom > viewportHeight || rect.height < 1) {
+    target.scrollIntoView({ behavior: "auto", block: "center", inline: "nearest" });
   }
 
   pulseTarget(target);

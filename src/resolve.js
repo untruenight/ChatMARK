@@ -98,10 +98,54 @@ export function resolveBookmarkTarget(bookmark) {
   if (isSandboxCardAnchor(anchor)) {
     return resolveSandboxCardTarget(anchor);
   }
-  const exactTarget = resolveUserExactTarget(bookmark);
+
+  // ============================================================
+  // 3-way branch: user / assistant / unknown
+  // ============================================================
+
+  if (anchor.messageRole === "user") {
+    return resolveUserBookmarkTarget(bookmark);
+  }
+
+  // assistant OR unknown ("") → existing generic logic (untouched)
+  return resolveAssistantOrGenericTarget(bookmark);
+}
+
+// ============================================================
+// User bookmark resolve — dedicated path (never enters generic B₁)
+// ============================================================
+
+function resolveUserBookmarkTarget(bookmark) {
+  var anchor = bookmark.anchor;
+
+  // Tier 1: exact offset match (Phase 1)
+  var exactTarget = resolveUserExactTarget(bookmark);
   if (exactTarget) {
     return exactTarget.block;
   }
+
+  // Tier 2: neighbor assistant landmark
+  var neighborTarget = resolveUserByNeighborAssistant(bookmark);
+  if (neighborTarget) {
+    return neighborTarget;
+  }
+
+  // Tier 3: fuzzy text match within user messages (Phase 2)
+  var fuzzyTarget = resolveUserFuzzyTarget(bookmark);
+  if (fuzzyTarget) {
+    return fuzzyTarget.block;
+  }
+
+  // Tier 4: scroll position fallback (always returns a user message or null)
+  return resolveUserScrollFallback(anchor);
+}
+
+// ============================================================
+// Assistant / generic resolve — existing logic (100% preserved)
+// ============================================================
+
+function resolveAssistantOrGenericTarget(bookmark) {
+  const anchor = bookmark.anchor;
 
   const byId = resolveById(anchor);
   if (byId) {
@@ -335,32 +379,111 @@ function findUserExactTextMatch(textMap, anchor) {
 
   const exactStart = anchor.selectionExactStart;
   const exactEnd = anchor.selectionExactEnd;
-  if (exactEnd > textMap.rawText.length) {
-    return null;
-  }
-
-  const rawSelection = textMap.rawText.slice(exactStart, exactEnd);
-  if (!rawSelection) {
-    return null;
-  }
-
-  const prefixMatched = !anchor.selectionRawPrefix || textMap.rawText
-    .slice(Math.max(0, exactStart - anchor.selectionRawPrefix.length), exactStart)
-    .endsWith(anchor.selectionRawPrefix);
-  const suffixMatched = !anchor.selectionRawSuffix || textMap.rawText
-    .slice(exactEnd, exactEnd + anchor.selectionRawSuffix.length)
-    .startsWith(anchor.selectionRawSuffix);
-  const normalizedSelection = normalizeText(rawSelection);
   const expectedSelection = normalizeText(anchor.selectionText || "");
 
-  if ((anchor.selectionRawPrefix && !prefixMatched) || (anchor.selectionRawSuffix && !suffixMatched)) {
+  // Primary: exact offset match
+  if (exactEnd <= textMap.rawText.length) {
+    const rawSelection = textMap.rawText.slice(exactStart, exactEnd);
+    if (rawSelection) {
+      const prefixMatched = !anchor.selectionRawPrefix || textMap.rawText
+        .slice(Math.max(0, exactStart - anchor.selectionRawPrefix.length), exactStart)
+        .endsWith(anchor.selectionRawPrefix);
+      const suffixMatched = !anchor.selectionRawSuffix || textMap.rawText
+        .slice(exactEnd, exactEnd + anchor.selectionRawSuffix.length)
+        .startsWith(anchor.selectionRawSuffix);
+      const normalizedSelection = normalizeText(rawSelection);
+
+      const prefixOk = !anchor.selectionRawPrefix || prefixMatched;
+      const suffixOk = !anchor.selectionRawSuffix || suffixMatched;
+
+      if (prefixOk && suffixOk && (!expectedSelection || normalizedSelection === expectedSelection)) {
+        const match = buildRawOffsetMatch(textMap, exactStart, exactEnd, {
+          isCodeMatch: false,
+          isStrongTextMatch: true
+        });
+        if (match) {
+          match.isUserExactMatch = true;
+          match.prefixMatched = prefixMatched;
+          match.suffixMatched = suffixMatched;
+          return match;
+        }
+      }
+    }
+  }
+
+  // Fallback: ratio-based search when exact offset fails
+  if (!expectedSelection) {
     return null;
   }
-  if (expectedSelection && normalizedSelection !== expectedSelection) {
+  var ratioMatch = findUserRatioFallbackMatch(textMap, anchor, expectedSelection);
+  if (ratioMatch) {
+    return ratioMatch;
+  }
+
+  return null;
+}
+
+function findUserRatioFallbackMatch(textMap, anchor, expectedSelection) {
+  if (!textMap || !textMap.rawText || !expectedSelection) {
     return null;
   }
 
-  const match = buildRawOffsetMatch(textMap, exactStart, exactEnd, {
+  var rawText = textMap.rawText;
+  var normalizedRawText = normalizeText(rawText);
+  var normalizedExpected = expectedSelection.toLowerCase();
+  var searchTarget = normalizedRawText.toLowerCase();
+
+  // Collect all occurrences of the selection text
+  var occurrences = [];
+  var searchOffset = 0;
+  while (searchOffset < searchTarget.length) {
+    var foundIndex = searchTarget.indexOf(normalizedExpected, searchOffset);
+    if (foundIndex < 0) break;
+    occurrences.push(foundIndex);
+    searchOffset = foundIndex + 1;
+  }
+
+  if (occurrences.length === 0) {
+    return null;
+  }
+
+  // Single occurrence — no ambiguity
+  if (occurrences.length === 1) {
+    return buildUserRatioMatch(textMap, rawText, normalizedRawText, occurrences[0], expectedSelection.length);
+  }
+
+  // Multiple occurrences — use ratio to disambiguate
+  var ratioStart = Number.isFinite(anchor.selectionExactRatioStart) && anchor.selectionExactRatioStart >= 0
+    ? anchor.selectionExactRatioStart : -1;
+  if (ratioStart < 0) {
+    // No ratio available — use first occurrence as last resort
+    return buildUserRatioMatch(textMap, rawText, normalizedRawText, occurrences[0], expectedSelection.length);
+  }
+
+  var estimatedStart = Math.round(ratioStart * rawText.length);
+  var bestIndex = occurrences[0];
+  var bestDistance = Math.abs(occurrences[0] - estimatedStart);
+
+  for (var i = 1; i < occurrences.length; i++) {
+    var distance = Math.abs(occurrences[i] - estimatedStart);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestIndex = occurrences[i];
+    }
+  }
+
+  return buildUserRatioMatch(textMap, rawText, normalizedRawText, bestIndex, expectedSelection.length);
+}
+
+function buildUserRatioMatch(textMap, rawText, normalizedRawText, normalizedStart, selectionLength) {
+  // Map normalized offset back to raw offset
+  var rawStart = mapNormalizedOffsetToRaw(rawText, normalizedRawText, normalizedStart);
+  var rawEnd = mapNormalizedOffsetToRaw(rawText, normalizedRawText, normalizedStart + selectionLength);
+  if (rawStart < 0 || rawEnd <= rawStart) {
+    return null;
+  }
+
+  var match = buildRawOffsetMatch(textMap, rawStart, rawEnd, {
     isCodeMatch: false,
     isStrongTextMatch: true
   });
@@ -369,9 +492,41 @@ function findUserExactTextMatch(textMap, anchor) {
   }
 
   match.isUserExactMatch = true;
-  match.prefixMatched = prefixMatched;
-  match.suffixMatched = suffixMatched;
+  match.isRatioFallback = true;
+  match.prefixMatched = false;
+  match.suffixMatched = false;
   return match;
+}
+
+function mapNormalizedOffsetToRaw(rawText, normalizedText, normalizedOffset) {
+  if (normalizedOffset <= 0) return 0;
+  if (normalizedOffset >= normalizedText.length) return rawText.length;
+
+  var normalizedPos = 0;
+  var rawPos = 0;
+  var inWhitespace = false;
+
+  while (rawPos < rawText.length && normalizedPos < normalizedOffset) {
+    var ch = rawText[rawPos];
+    if (/\s/.test(ch)) {
+      if (!inWhitespace && normalizedPos > 0) {
+        normalizedPos += 1;  // single space in normalized
+        inWhitespace = true;
+      }
+      rawPos += 1;
+    } else {
+      inWhitespace = false;
+      normalizedPos += 1;
+      rawPos += 1;
+    }
+  }
+
+  // Skip trailing whitespace in raw to align to next non-ws char
+  while (rawPos < rawText.length && /\s/.test(rawText[rawPos]) && inWhitespace) {
+    rawPos += 1;
+  }
+
+  return rawPos;
 }
 
 function scoreUserExactMessageCandidate(message, anchor, match) {
@@ -392,6 +547,334 @@ function scoreUserExactMessageCandidate(message, anchor, match) {
   }
 
   return score;
+}
+
+// ============================================================
+// Neighbor assistant adapter (isolated — does NOT call assistant resolve path)
+// ============================================================
+
+function resolveNeighborAssistantBlock(anchor) {
+  if (!anchor || !anchor.neighborAssistantFingerprint) {
+    return null;
+  }
+
+  try {
+    var messages = collectMessageContainers();
+    var bestMessage = null;
+    var bestScore = -Infinity;
+
+    for (var i = 0; i < messages.length; i++) {
+      var msg = messages[i];
+      if (getMessageRole(msg) !== "assistant") {
+        continue;
+      }
+
+      var fp = fingerprintText(getElementText(msg));
+      if (fp === anchor.neighborAssistantFingerprint) {
+        // Fingerprint match — score by index proximity
+        var score = 100;
+        if (Number.isInteger(anchor.messageIndex) && anchor.messageIndex >= 0) {
+          score += Math.max(0, 40 - Math.abs(anchor.messageIndex - i) * 8);
+        }
+        if (score > bestScore) {
+          bestScore = score;
+          bestMessage = msg;
+        }
+      }
+    }
+
+    return bestMessage;
+  } catch (error) {
+    return null;
+  }
+}
+
+// ============================================================
+// User resolve by neighbor assistant (Tier 2)
+// ============================================================
+
+function resolveUserByNeighborAssistant(bookmark) {
+  var anchor = bookmark && bookmark.anchor ? bookmark.anchor : null;
+  if (!anchor || anchor.messageRole !== "user" || !anchor.neighborAssistantFingerprint) {
+    return null;
+  }
+
+  var assistantMessage = resolveNeighborAssistantBlock(anchor);
+  if (!assistantMessage) {
+    return null;
+  }
+
+  // Walk DOM to find adjacent user message
+  var allMessages = collectMessageContainers();
+  var assistantIdx = allMessages.indexOf(assistantMessage);
+  if (assistantIdx < 0) {
+    return null;
+  }
+
+  var userMessage = null;
+  var direction = anchor.neighborAssistantDirection || "after";
+
+  // Try stored direction first
+  if (direction === "after") {
+    // Assistant is AFTER user → user is before assistant
+    userMessage = findAdjacentUserMessage(allMessages, assistantIdx, "before");
+  } else {
+    // Assistant is BEFORE user → user is after assistant
+    userMessage = findAdjacentUserMessage(allMessages, assistantIdx, "after");
+  }
+
+  // Try opposite direction if first attempt fails
+  if (!userMessage) {
+    if (direction === "after") {
+      userMessage = findAdjacentUserMessage(allMessages, assistantIdx, "after");
+    } else {
+      userMessage = findAdjacentUserMessage(allMessages, assistantIdx, "before");
+    }
+  }
+
+  if (!userMessage) {
+    return null;
+  }
+
+  // Verify: does this user message contain the selection text?
+  var selectionText = normalizeText(anchor.selectionText || "");
+  if (selectionText && selectionText.length >= 2) {
+    var messageText = normalizeText(getElementText(userMessage));
+    if (messageText.toLowerCase().indexOf(selectionText.toLowerCase()) < 0) {
+      return null;  // Text not found — this isn't the right user message
+    }
+  }
+
+  // Build textMap match for precise highlight
+  var textMap = buildTargetTextMap(userMessage, { preserveWhitespace: true });
+  if (textMap && textMap.rawText && selectionText) {
+    var normalizedRaw = normalizeText(textMap.rawText);
+    var matchIndex = normalizedRaw.toLowerCase().indexOf(selectionText.toLowerCase());
+    if (matchIndex >= 0) {
+      var rawStart = mapNormalizedOffsetToRaw(textMap.rawText, normalizedRaw, matchIndex);
+      var rawEnd = mapNormalizedOffsetToRaw(textMap.rawText, normalizedRaw, matchIndex + selectionText.length);
+      if (rawStart >= 0 && rawEnd > rawStart) {
+        var match = buildRawOffsetMatch(textMap, rawStart, rawEnd, {
+          isCodeMatch: false,
+          isStrongTextMatch: true
+        });
+        if (match) {
+          match.isUserNeighborMatch = true;
+          var block = findExactMatchBlock(userMessage, match);
+          return block || userMessage;
+        }
+      }
+    }
+  }
+
+  return userMessage;
+}
+
+function findAdjacentUserMessage(allMessages, fromIndex, direction) {
+  if (direction === "before") {
+    for (var i = fromIndex - 1; i >= 0; i--) {
+      if (getMessageRole(allMessages[i]) === "user") {
+        return allMessages[i];
+      }
+    }
+  } else {
+    for (var j = fromIndex + 1; j < allMessages.length; j++) {
+      if (getMessageRole(allMessages[j]) === "user") {
+        return allMessages[j];
+      }
+    }
+  }
+  return null;
+}
+
+// ============================================================
+// User scroll fallback (Tier 4 — last resort, guarantees no B₁ fallthrough)
+// ============================================================
+
+function resolveUserScrollFallback(anchor) {
+  if (!anchor || anchor.messageRole !== "user") {
+    return null;
+  }
+
+  var messages = collectMessageContainers();
+  var userMessages = [];
+  for (var i = 0; i < messages.length; i++) {
+    if (getMessageRole(messages[i]) === "user" && getElementText(messages[i]).length > 0) {
+      userMessages.push(messages[i]);
+    }
+  }
+
+  if (!userMessages.length) {
+    return null;
+  }
+
+  // If scrollRatio available, find closest user message
+  if (Number.isFinite(anchor.scrollRatio)) {
+    var bestMsg = userMessages[0];
+    var bestDist = Math.abs(getElementScrollRatio(userMessages[0]) - anchor.scrollRatio);
+
+    for (var j = 1; j < userMessages.length; j++) {
+      var dist = Math.abs(getElementScrollRatio(userMessages[j]) - anchor.scrollRatio);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestMsg = userMessages[j];
+      }
+    }
+    return bestMsg;
+  }
+
+  // No scrollRatio — try messageIndex
+  if (Number.isInteger(anchor.messageIndex) && anchor.messageIndex >= 0) {
+    var targetIdx = anchor.messageIndex;
+    var bestCandidate = userMessages[0];
+    var bestIdxDist = Math.abs(messages.indexOf(userMessages[0]) - targetIdx);
+
+    for (var k = 1; k < userMessages.length; k++) {
+      var idxDist = Math.abs(messages.indexOf(userMessages[k]) - targetIdx);
+      if (idxDist < bestIdxDist) {
+        bestIdxDist = idxDist;
+        bestCandidate = userMessages[k];
+      }
+    }
+    return bestCandidate;
+  }
+
+  return userMessages[0];
+}
+
+// ============================================================
+// User fuzzy resolve (Phase 2 — Solution C)
+// ============================================================
+
+function resolveUserFuzzyTarget(bookmark) {
+  var anchor = bookmark && bookmark.anchor ? bookmark.anchor : null;
+  if (!anchor || anchor.messageRole !== "user") {
+    return null;
+  }
+
+  var selectionText = normalizeText(anchor.selectionText || bookmark.snippet || "");
+  if (!selectionText || selectionText.length < 2) {
+    return null;
+  }
+
+  var messages = collectUserMessagesForExactTarget();
+  if (!messages.length) {
+    return null;
+  }
+
+  var allMessages = collectMessageContainers();
+  var candidates = [];
+
+  messages.forEach(function (message, index) {
+    var messageText = normalizeText(getElementText(message));
+    if (!messageText) {
+      return;
+    }
+
+    var selectionLower = selectionText.toLowerCase();
+    var messageLower = messageText.toLowerCase();
+    if (messageLower.indexOf(selectionLower) < 0) {
+      return;
+    }
+
+    var score = 0;
+
+    // Fingerprint match
+    if (anchor.messageFingerprint && fingerprintText(getElementText(message)) === anchor.messageFingerprint) {
+      score += 120;
+    }
+
+    // Message index proximity
+    var globalIndex = allMessages.indexOf(message);
+    if (Number.isInteger(anchor.messageIndex) && anchor.messageIndex >= 0 && globalIndex >= 0) {
+      score += Math.max(0, 48 - Math.abs(anchor.messageIndex - globalIndex) * 12);
+    }
+
+    // Ratio proximity (message position in conversation)
+    if (Number.isFinite(anchor.scrollRatio)) {
+      var msgRatio = getElementScrollRatio(message);
+      score += Math.max(0, 24 - Math.round(Math.abs(anchor.scrollRatio - msgRatio) * 80));
+    }
+
+    // Selection text is entire message (strong signal for short user messages)
+    if (selectionLower === messageLower) {
+      score += 30;
+    }
+
+    candidates.push({
+      message: message,
+      score: score
+    });
+  });
+
+  if (!candidates.length) {
+    return null;
+  }
+
+  // Sort by score descending
+  candidates.sort(function (a, b) { return b.score - a.score; });
+
+  // Confidence threshold: best score must be >= 40, and gap to second must be >= 20
+  var best = candidates[0];
+  if (best.score < 40) {
+    return null;
+  }
+  if (candidates.length > 1 && (best.score - candidates[1].score) < 20) {
+    // Ambiguous — try scrollRatio tiebreak (available on all bookmarks)
+    if (Number.isFinite(anchor.scrollRatio)) {
+      var bestRatioDist = Infinity;
+      var ratioWinner = null;
+      for (var i = 0; i < Math.min(candidates.length, 3); i++) {
+        var cRatio = getElementScrollRatio(candidates[i].message);
+        var dist = Math.abs(anchor.scrollRatio - cRatio);
+        if (dist < bestRatioDist) {
+          bestRatioDist = dist;
+          ratioWinner = candidates[i];
+        }
+      }
+      if (ratioWinner) {
+        best = ratioWinner;
+      }
+    } else {
+      // No scrollRatio — pick first candidate rather than returning null
+      // (staying in user message is always better than falling to assistant via B₁)
+      best = candidates[0];
+    }
+  }
+
+  // Build a textMap-based match within the winning message
+  var textMap = buildTargetTextMap(best.message, { preserveWhitespace: true });
+  if (textMap && textMap.rawText) {
+    var normalizedRaw = normalizeText(textMap.rawText);
+    var matchIndex = normalizedRaw.toLowerCase().indexOf(selectionText.toLowerCase());
+    if (matchIndex >= 0) {
+      var rawStart = mapNormalizedOffsetToRaw(textMap.rawText, normalizedRaw, matchIndex);
+      var rawEnd = mapNormalizedOffsetToRaw(textMap.rawText, normalizedRaw, matchIndex + selectionText.length);
+      if (rawStart >= 0 && rawEnd > rawStart) {
+        var match = buildRawOffsetMatch(textMap, rawStart, rawEnd, {
+          isCodeMatch: false,
+          isStrongTextMatch: true
+        });
+        if (match) {
+          match.isUserExactMatch = false;
+          match.isUserFuzzyMatch = true;
+          var block = findExactMatchBlock(best.message, match);
+          return {
+            message: best.message,
+            block: block || best.message,
+            match: match
+          };
+        }
+      }
+    }
+  }
+
+  // Last resort: return the message element itself as target
+  return {
+    message: best.message,
+    block: best.message,
+    match: null
+  };
 }
 
 function findExactMatchBlock(message, match) {
@@ -515,7 +998,12 @@ function scoreContext(anchor, bookmark, context) {
   if (anchor.messageRole && context.messageRole === anchor.messageRole) {
     score += isShortSelection ? 22 : 10;
   } else if (anchor.messageRole && context.messageRole) {
-    score -= isShortSelection ? 18 : 6;
+    // Stronger penalty when user-block bookmark lands on assistant block
+    if (anchor.messageRole === "user" && context.messageRole === "assistant") {
+      score -= 120;
+    } else {
+      score -= isShortSelection ? 18 : 6;
+    }
   }
   if (codeAnchor && !context.isCodeBlock) {
     score -= 72;
@@ -1395,6 +1883,30 @@ export function rawOffsetToDomPosition(segments, rawOffset, isEnd) {
     node: lastSegment.node,
     offset: lastSegment.node.nodeValue.length
   };
+}
+
+export function domPositionToRawOffset(segments, node, offset) {
+  if (!Array.isArray(segments) || !segments.length || !node) {
+    return -1;
+  }
+
+  for (let index = 0; index < segments.length; index += 1) {
+    const segment = segments[index];
+    if (segment.node === node) {
+      return segment.start + clamp(offset, 0, (segment.node.nodeValue || "").length);
+    }
+  }
+
+  // Node not found in segments — find the closest ancestor text node
+  var parent = node.nodeType === Node.TEXT_NODE ? node.parentNode : node;
+  for (let index = 0; index < segments.length; index += 1) {
+    const segment = segments[index];
+    if (parent && parent.contains(segment.node)) {
+      return segment.start;
+    }
+  }
+
+  return -1;
 }
 
 export function buildNormalizedTextMapping(rawText) {

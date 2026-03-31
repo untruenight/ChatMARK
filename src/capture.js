@@ -31,6 +31,64 @@ export function setCaptureSelectionCallbacks(callbacks) {
   _isEditableTextSelectionTarget = callbacks.isEditableTextSelectionTarget || null;
 }
 
+// ---- 콜백 슬롯 (resolve.js 순환 의존 방지) ----
+let _buildTargetTextMap = null;
+let _domPositionToRawOffset = null;
+
+export function setCaptureResolveCallbacks(callbacks) {
+  _buildTargetTextMap = callbacks.buildTargetTextMap || null;
+  _domPositionToRawOffset = callbacks.domPositionToRawOffset || null;
+}
+
+// ============================================================
+// 인접 assistant 메시지 탐색 (user block 네비게이션 보조)
+// ============================================================
+
+function findNeighborAssistantInfo(message) {
+  if (!message || getMessageRole(message) !== "user") {
+    return null;
+  }
+
+  var allMessages = collectMessageContainers();
+  var idx = allMessages.indexOf(message);
+  if (idx < 0) {
+    return null;
+  }
+
+  // Prefer the assistant BEFORE (the response that precedes this user turn)
+  // then try AFTER (the assistant response to this user turn)
+  var before = null;
+  var after = null;
+
+  for (var i = idx - 1; i >= 0; i--) {
+    if (getMessageRole(allMessages[i]) === "assistant") {
+      before = allMessages[i];
+      break;
+    }
+  }
+  for (var j = idx + 1; j < allMessages.length; j++) {
+    if (getMessageRole(allMessages[j]) === "assistant") {
+      after = allMessages[j];
+      break;
+    }
+  }
+
+  // Pick the nearest assistant, preferring "after" (the direct response to this user message)
+  var neighbor = after || before;
+  if (!neighbor) {
+    return null;
+  }
+
+  var direction = neighbor === after ? "after" : "before";
+  var neighborText = getElementText(neighbor);
+
+  return {
+    fingerprint: fingerprintText(neighborText),
+    direction: direction,
+    blockSnippet: truncateText(neighborText, 120)
+  };
+}
+
 // ============================================================
 // 핵심 캡처 함수
 // ============================================================
@@ -66,6 +124,7 @@ export function captureAnchor() {
     preserveWhitespace: Boolean(selectionDetails && selectionDetails.isCodeBlock)
   });
   const userExactDetails = getUserMessageExactSelectionDetails(message, selection);
+  const neighborAssistant = findNeighborAssistantInfo(message);
 
   if (!blockText) {
     return null;
@@ -95,6 +154,8 @@ export function captureAnchor() {
     selectionExactEnd: userExactDetails ? userExactDetails.end : -1,
     selectionRawPrefix: userExactDetails ? userExactDetails.prefix : "",
     selectionRawSuffix: userExactDetails ? userExactDetails.suffix : "",
+    selectionExactRatioStart: userExactDetails ? (userExactDetails.ratioStart != null ? userExactDetails.ratioStart : -1) : -1,
+    selectionExactRatioEnd: userExactDetails ? (userExactDetails.ratioEnd != null ? userExactDetails.ratioEnd : -1) : -1,
     selectionCodeOffsetStart: selectionDetails ? selectionDetails.codeOffsetStart : -1,
     selectionCodeOffsetEnd: selectionDetails ? selectionDetails.codeOffsetEnd : -1,
     selectionCodeLine: selectionDetails ? selectionDetails.codeLine : -1,
@@ -107,6 +168,9 @@ export function captureAnchor() {
     selectionSpanMiddle: selectionSpanDetails ? selectionSpanDetails.middle : "",
     selectionSpanTail: selectionSpanDetails ? selectionSpanDetails.tail : "",
     selectionSpanMarkerSignature: selectionSpanDetails ? selectionSpanDetails.markerSignature : "",
+    neighborAssistantFingerprint: neighborAssistant ? neighborAssistant.fingerprint : "",
+    neighborAssistantDirection: neighborAssistant ? neighborAssistant.direction : "",
+    neighborAssistantBlockSnippet: neighborAssistant ? neighborAssistant.blockSnippet : "",
     messageStableId: messageStableId
   };
 }
@@ -323,6 +387,27 @@ export function getUserMessageExactSelectionDetails(message, selection) {
   }
 
   try {
+    // Solution A: use buildTargetTextMap for offset symmetry with resolve
+    if (_buildTargetTextMap && _domPositionToRawOffset) {
+      const textMap = _buildTargetTextMap(message, { preserveWhitespace: true });
+      if (textMap && textMap.segments && textMap.rawText) {
+        const startOffset = _domPositionToRawOffset(textMap.segments, range.startContainer, range.startOffset);
+        const endOffset = _domPositionToRawOffset(textMap.segments, range.endContainer, range.endOffset);
+        if (startOffset >= 0 && endOffset > startOffset) {
+          const rawTextLength = textMap.rawText.length;
+          return {
+            start: startOffset,
+            end: endOffset,
+            prefix: textMap.rawText.slice(Math.max(0, startOffset - 64), startOffset),
+            suffix: textMap.rawText.slice(endOffset, endOffset + 64),
+            ratioStart: rawTextLength > 0 ? clamp(startOffset / rawTextLength, 0, 1) : -1,
+            ratioEnd: rawTextLength > 0 ? clamp(endOffset / rawTextLength, 0, 1) : -1
+          };
+        }
+      }
+    }
+
+    // Fallback: original Range.toString() path
     const prefixRange = document.createRange();
     prefixRange.selectNodeContents(message);
     prefixRange.setEnd(range.startContainer, range.startOffset);
@@ -338,11 +423,14 @@ export function getUserMessageExactSelectionDetails(message, selection) {
       return null;
     }
 
+    const totalLength = prefixRaw.length + selectedRaw.length + suffixRaw.length;
     return {
       start: prefixRaw.length,
       end: prefixRaw.length + selectedRaw.length,
       prefix: prefixRaw.slice(-64),
-      suffix: suffixRaw.slice(0, 64)
+      suffix: suffixRaw.slice(0, 64),
+      ratioStart: totalLength > 0 ? clamp(prefixRaw.length / totalLength, 0, 1) : -1,
+      ratioEnd: totalLength > 0 ? clamp((prefixRaw.length + selectedRaw.length) / totalLength, 0, 1) : -1
     };
   } catch (error) {
     return null;
