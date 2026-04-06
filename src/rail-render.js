@@ -190,7 +190,7 @@ function canRefreshCurrentBookmarksViewAfterIncrementalRemove(bookmarkId) {
     return false;
   }
 
-  if (!state.layer.querySelector('.cgptbm-tab[data-bookmark-id="' + bookmarkId + '"]')) {
+  if (!state.layer.querySelector('.cgptbm-tab[data-bookmark-id="' + CSS.escape(bookmarkId) + '"]')) {
     return false;
   }
 
@@ -209,7 +209,7 @@ export function refreshCurrentBookmarksViewAfterIncrementalRemove(bookmarkId) {
     return false;
   }
 
-  const removedTab = state.layer.querySelector('.cgptbm-tab[data-bookmark-id="' + bookmarkId + '"]');
+  const removedTab = state.layer.querySelector('.cgptbm-tab[data-bookmark-id="' + CSS.escape(bookmarkId) + '"]');
   if (!removedTab) {
     return false;
   }
@@ -297,7 +297,7 @@ export function refreshCurrentBookmarksViewAfterIncrementalCreate(bookmarkId) {
     return false;
   }
 
-  const existingTab = state.layer.querySelector('.cgptbm-tab[data-bookmark-id="' + bookmarkId + '"]');
+  const existingTab = state.layer.querySelector('.cgptbm-tab[data-bookmark-id="' + CSS.escape(bookmarkId) + '"]');
   if (existingTab) {
     return false;
   }
@@ -357,7 +357,7 @@ function canRefreshCurrentBookmarksViewAfterIncrementalUpdate(bookmarkId) {
     return false;
   }
 
-  return Boolean(state.layer.querySelector('.cgptbm-tab[data-bookmark-id="' + bookmarkId + '"]'));
+  return Boolean(state.layer.querySelector('.cgptbm-tab[data-bookmark-id="' + CSS.escape(bookmarkId) + '"]'));
 }
 
 export function refreshCurrentBookmarksViewAfterIncrementalUpdate(bookmarkId) {
@@ -376,7 +376,7 @@ export function refreshCurrentBookmarksViewAfterIncrementalUpdate(bookmarkId) {
   }
 
   const updatedBookmark = visibleBookmarks[bookmarkIndex];
-  const tab = state.layer.querySelector('.cgptbm-tab[data-bookmark-id="' + bookmarkId + '"]');
+  const tab = state.layer.querySelector('.cgptbm-tab[data-bookmark-id="' + CSS.escape(bookmarkId) + '"]');
   if (!updatedBookmark || !tab) {
     return false;
   }

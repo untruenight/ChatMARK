@@ -161,7 +161,7 @@ export function endPopupResizeSession() {
   state.popupResizeSession = null;
 
   if (state.layer) {
-    const popup = state.layer.querySelector('.cgptbm-tab__popup[data-bookmark-id="' + bookmarkId + '"]');
+    const popup = state.layer.querySelector('.cgptbm-tab__popup[data-bookmark-id="' + CSS.escape(bookmarkId) + '"]');
     if (popup) {
       popup.classList.remove("is-resizing");
     }
@@ -175,7 +175,7 @@ function markResizeSettlingBookmark(bookmarkId) {
     return;
   }
 
-  const tab = state.layer.querySelector('.cgptbm-tab[data-bookmark-id="' + bookmarkId + '"]');
+  const tab = state.layer.querySelector('.cgptbm-tab[data-bookmark-id="' + CSS.escape(bookmarkId) + '"]');
   if (!tab) {
     return;
   }
@@ -196,7 +196,7 @@ function clearResizeSettlingBookmark(skipRailSync) {
     return;
   }
 
-  const tab = state.layer.querySelector('.cgptbm-tab[data-bookmark-id="' + state.resizeSettlingBookmarkId + '"]');
+  const tab = state.layer.querySelector('.cgptbm-tab[data-bookmark-id="' + CSS.escape(state.resizeSettlingBookmarkId) + '"]');
   if (tab) {
     tab.classList.remove("is-resize-settling");
   }

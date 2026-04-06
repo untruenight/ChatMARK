@@ -458,7 +458,7 @@ export function handleDocumentPointerDown(event) {
 
   if (state.colorPicker) {
     const ownerTab = state.colorPickerBookmarkId && state.layer
-      ? state.layer.querySelector('.cgptbm-tab[data-bookmark-id="' + state.colorPickerBookmarkId + '"]')
+      ? state.layer.querySelector('.cgptbm-tab[data-bookmark-id="' + CSS.escape(state.colorPickerBookmarkId) + '"]')
       : null;
     const insideColorPicker = Boolean(target && state.colorPicker.contains(target));
     const insideOwnerTab = Boolean(target && ownerTab && ownerTab.contains(target));
