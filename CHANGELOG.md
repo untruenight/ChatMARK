@@ -22,6 +22,15 @@
 ### Multi-platform Preparation
 - Extend `capture.js` / `resolve.js` — internal scaffolding for future Claude and Gemini support (not yet active)
 
+### Features
+- Add bookmark export/import with backup dropdown UI
+  - Save bookmarks to JSON file (with version and timestamp)
+  - Restore bookmarks from file with key filtering and normalization
+  - Warning: uninstalling without backup permanently deletes all bookmarks
+
+### Security
+- Apply CSS.escape() to all 9 querySelector calls with bookmark ID interpolation
+
 ### Bug Fixes
 - Fix bookmark label reverting to old text after inline edit when performing search
 

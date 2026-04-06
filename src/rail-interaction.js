@@ -9,6 +9,7 @@ import { normalizeText, fingerprintText } from './text.js';
 import { getScopeRoot, collectAnchorBlocks, getElementText, findMessageContainer } from './dom.js';
 import { formatPopupDisplayText, isCodeAnchor } from './capture.js';
 import { closeSavePopup, closeBookmarkColorPicker } from './popup.js';
+import { closeBackupDropdown } from './rail-controls.js';
 import { hideSelectionTrigger, isEditableTextSelectionTarget } from './selection.js';
 import { isFrameRelayAnchor, requestFrameBookmarkReveal } from './bridge.js';
 import {
@@ -476,6 +477,14 @@ export function handleDocumentPointerDown(event) {
     }
 
     closeSavePopup();
+  }
+
+  var backupDropdown = state.root ? state.root.querySelector(".cgptbm-backup-dropdown") : null;
+  if (backupDropdown) {
+    var backupBtn = state.root.querySelector(".cgptbm-history-controls__backup");
+    if (!backupDropdown.contains(target) && (!backupBtn || !backupBtn.contains(target))) {
+      closeBackupDropdown();
+    }
   }
 }
 

@@ -207,9 +207,11 @@ export const APP_VERSION = "1.1.0-beta";
 export const UPDATE_DISMISSED_STORAGE_KEY = "cgptbm:update:dismissed";
 export const RELEASE_NOTES = {
   "1.1.0-beta": [
+    "Bookmark export/import (save & restore from file)",
     "Internal code modularization for maintainability",
     "Preparing multi-platform support (coming soon)",
-    "Improved site-ready stability guard"
+    "Improved site-ready stability guard",
+    "Security hardening for CSS selector injection"
   ],
   "1.0.0": [
     "First official release",

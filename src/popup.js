@@ -23,6 +23,7 @@ import {
   refreshCurrentBookmarksView
 } from './bookmarks.js';
 import { isSandboxCardAnchor } from './sandbox-card.js';
+import { closeBackupDropdown } from './rail-controls.js';
 
 // ---- 콜백 주입 (순환 의존 방지) ----
 // rail.js (UI layer)
@@ -464,6 +465,7 @@ export function openSavePopup(anchor, popupPosition, options) {
   const nextOptions = options || {};
   closeSavePopup();
   closeBookmarkColorPicker();
+  closeBackupDropdown();
   if (_resetAddTabFeedback) _resetAddTabFeedback();
   if (_hideSelectionTrigger) _hideSelectionTrigger();
 
@@ -655,6 +657,7 @@ export function handleBookmarkColorPickerOpen(bookmarkId, event) {
 
   closeSavePopup();
   closeBookmarkColorPicker({ suppressExpandedSync: true });
+  closeBackupDropdown();
   state.colorPickerLockedBookmarkId = bookmarkId;
   if (_syncExpandedBookmarkState) _syncExpandedBookmarkState();
 

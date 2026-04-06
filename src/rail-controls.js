@@ -32,6 +32,7 @@ import {
   ensureBookmarkSearchControls, syncBookmarkSearchControls,
   createBookmarkSearchRow
 } from './rail-search.js';
+import { exportBookmarks, importBookmarks } from './bookmarks-backup.js';
 
 // ============================================================
 // Local constants
@@ -66,6 +67,67 @@ export function initControls(callbacks) {
 
 function preventFocusSteal(event) {
   event.preventDefault();
+}
+
+// ---- Backup dropdown ----
+
+export function closeBackupDropdown() {
+  if (!state.root) return;
+  var dropdown = state.root.querySelector(".cgptbm-backup-dropdown");
+  if (dropdown) dropdown.remove();
+}
+
+function handleBackupButtonClick(event) {
+  event.stopPropagation();
+  var existing = state.root ? state.root.querySelector(".cgptbm-backup-dropdown") : null;
+  if (existing) {
+    existing.remove();
+    return;
+  }
+
+  var dropdown = document.createElement("div");
+  dropdown.className = "cgptbm-backup-dropdown";
+
+  var saveBtn = document.createElement("button");
+  saveBtn.type = "button";
+  saveBtn.className = "cgptbm-backup-dropdown__item";
+  saveBtn.textContent = "Save bookmarks to file";
+  saveBtn.addEventListener("pointerdown", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  });
+  saveBtn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    closeBackupDropdown();
+    exportBookmarks();
+  });
+
+  var restoreBtn = document.createElement("button");
+  restoreBtn.type = "button";
+  restoreBtn.className = "cgptbm-backup-dropdown__item";
+  restoreBtn.textContent = "Restore bookmarks from file";
+  restoreBtn.addEventListener("pointerdown", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  });
+  restoreBtn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    closeBackupDropdown();
+    importBookmarks();
+  });
+
+  var warning = document.createElement("div");
+  warning.className = "cgptbm-backup-dropdown__warning";
+  warning.textContent = "\u26A0 Uninstalling ChatMARK without backup will permanently delete all bookmarks.";
+
+  dropdown.appendChild(saveBtn);
+  dropdown.appendChild(restoreBtn);
+  dropdown.appendChild(warning);
+
+  var backupBtn = state.root ? state.root.querySelector(".cgptbm-history-controls__backup") : null;
+  if (backupBtn) {
+    backupBtn.appendChild(dropdown);
+  }
 }
 
 function normalizeRailOpacity(value) {
@@ -166,6 +228,23 @@ function createBookmarkHistoryControls() {
 
   const sliderRow = document.createElement("div");
   sliderRow.className = "cgptbm-history-controls__slider-row";
+
+  const backupButton = document.createElement("button");
+  backupButton.type = "button";
+  backupButton.className = "cgptbm-history-controls__backup";
+  backupButton.title = "Save or restore bookmarks";
+  backupButton.setAttribute("aria-label", "Save or restore bookmarks");
+  backupButton.addEventListener("pointerdown", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    handleBackupButtonClick(e);
+  });
+  const backupIcon = document.createElement("span");
+  backupIcon.className = "cgptbm-history-controls__backup-icon";
+  backupIcon.setAttribute("aria-hidden", "true");
+  backupIcon.textContent = "\uD83D\uDCBE";
+  backupButton.appendChild(backupIcon);
+  sliderRow.appendChild(backupButton);
 
   const toggleButton = document.createElement("button");
   toggleButton.type = "button";
