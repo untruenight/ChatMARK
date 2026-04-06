@@ -27,6 +27,92 @@ import {
 } from './capture.js';
 
 // ============================================================
+// Resolve environment collection — seam separating DOM queries from algorithm
+// ============================================================
+
+/**
+ * Collect the DOM environment needed by resolve algorithms.
+ * Call once at the top of a resolve flow; pass the result to internal helpers.
+ */
+export function collectResolveEnvironment() {
+  var profile = getCurrentSiteProfile();
+  return {
+    profile: profile,
+    siteId: profile ? profile.id : "",
+    messages: collectMessageContainers(),
+    hasMessageIdAttr: Boolean(profile && profile.messageIdAttr)
+  };
+}
+
+// ============================================================
+// Structural message fallback — narrow seam for Claude/Gemini
+// ============================================================
+// Sites without messageIdAttr (Claude, Gemini) cannot use CSA's
+// attribute-based lookup. This fallback identifies a message by
+// fingerprint + role + index — activated only when ID-based CSA
+// is unavailable, keeping the GPT path untouched.
+
+function resolveMessageByStructuralFallback(anchor, env) {
+  if (!anchor) {
+    return null;
+  }
+  // Only activate when CSA-by-ID is unavailable (Claude/Gemini)
+  if (env && env.hasMessageIdAttr) {
+    return null;
+  }
+  // Fingerprint is the minimum gate — without it, too risky
+  if (!anchor.messageFingerprint) {
+    return null;
+  }
+
+  var messages = env ? env.messages : collectMessageContainers();
+  if (!messages.length) {
+    return null;
+  }
+
+  var bestMessage = null;
+  var bestScore = -Infinity;
+
+  for (var i = 0; i < messages.length; i++) {
+    var msg = messages[i];
+    var role = getMessageRole(msg);
+    var score = 0;
+
+    // Role filter: skip wrong-role messages
+    if (anchor.messageRole && role && role !== anchor.messageRole) {
+      continue;
+    }
+    if (anchor.messageRole && role === anchor.messageRole) {
+      score += 30;
+    }
+
+    // Fingerprint match (strongest structural signal)
+    if (fingerprintText(getElementText(msg)) === anchor.messageFingerprint) {
+      score += 100;
+    } else {
+      continue;  // Fingerprint mismatch — skip
+    }
+
+    // Index proximity
+    if (Number.isInteger(anchor.messageIndex) && anchor.messageIndex >= 0) {
+      score += Math.max(0, 40 - Math.abs(anchor.messageIndex - i) * 8);
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestMessage = msg;
+    }
+  }
+
+  // Require fingerprint match (score >= 100) as minimum confidence
+  if (bestScore < 80) {
+    return null;
+  }
+
+  return bestMessage;
+}
+
+// ============================================================
 // CSA (Conversation-Structural Anchoring) — bastion disambiguation
 // ============================================================
 
@@ -117,11 +203,44 @@ export function resolveBookmarkTarget(bookmark) {
 
 function resolveUserBookmarkTarget(bookmark) {
   var anchor = bookmark.anchor;
+  var env = collectResolveEnvironment();
 
   // Tier 1: exact offset match (Phase 1)
   var exactTarget = resolveUserExactTarget(bookmark);
   if (exactTarget) {
     return exactTarget.block;
+  }
+
+  // Tier 1.5: structural message narrowing (Claude/Gemini seam)
+  var structuralMessage = resolveMessageByStructuralFallback(anchor, env);
+  if (structuralMessage && getMessageRole(structuralMessage) === "user") {
+    var selText = normalizeText(anchor.selectionText || bookmark.snippet || "");
+    if (selText && selText.length >= 2) {
+      var msgText = normalizeText(getElementText(structuralMessage));
+      if (msgText.toLowerCase().indexOf(selText.toLowerCase()) >= 0) {
+        var textMap = buildTargetTextMap(structuralMessage, { preserveWhitespace: true });
+        if (textMap && textMap.rawText) {
+          var normalizedRaw = normalizeText(textMap.rawText);
+          var matchIdx = normalizedRaw.toLowerCase().indexOf(selText.toLowerCase());
+          if (matchIdx >= 0) {
+            var rawStart = mapNormalizedOffsetToRaw(textMap.rawText, normalizedRaw, matchIdx);
+            var rawEnd = mapNormalizedOffsetToRaw(textMap.rawText, normalizedRaw, matchIdx + selText.length);
+            if (rawStart >= 0 && rawEnd > rawStart) {
+              var match = buildRawOffsetMatch(textMap, rawStart, rawEnd, {
+                isCodeMatch: false, isStrongTextMatch: true
+              });
+              if (match) {
+                return findExactMatchBlock(structuralMessage, match) || structuralMessage;
+              }
+            }
+          }
+        }
+      }
+      // Selection text not found in structural message — don't trust it, fall through
+    } else {
+      // No selection text to verify — return structural message as-is
+      return structuralMessage;
+    }
   }
 
   // Tier 2: neighbor assistant landmark
@@ -188,7 +307,13 @@ function resolveAssistantOrGenericTarget(bookmark) {
   // CSA bastion: disambiguate when B₁ scoring is ambiguous
   if (isResolveScoringAmbiguous(bestMatch, secondBestMatch, anchor)) {
     try {
-      const csaMessage = resolveMessageByCSA(anchor);
+      // Step 1: ID-based CSA (GPT path)
+      var csaMessage = resolveMessageByCSA(anchor);
+      // Step 2: structural fallback (Claude/Gemini path)
+      if (!csaMessage) {
+        var env = collectResolveEnvironment();
+        csaMessage = resolveMessageByStructuralFallback(anchor, env);
+      }
       if (csaMessage) {
         const csaConfirmed = pickCandidateInCSAMessage(
           [bestMatch, secondBestMatch], csaMessage
@@ -696,7 +821,14 @@ function resolveUserScrollFallback(anchor) {
     return null;
   }
 
-  var messages = collectMessageContainers();
+  // Structural identification first (Claude/Gemini seam)
+  var env = collectResolveEnvironment();
+  var structuralMessage = resolveMessageByStructuralFallback(anchor, env);
+  if (structuralMessage && getMessageRole(structuralMessage) === "user") {
+    return structuralMessage;
+  }
+
+  var messages = env.messages;
   var userMessages = [];
   for (var i = 0; i < messages.length; i++) {
     if (getMessageRole(messages[i]) === "user" && getElementText(messages[i]).length > 0) {

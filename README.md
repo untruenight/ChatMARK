@@ -24,6 +24,10 @@ npm install
 npm run build:all
 ```
 
+## What's New
+
+See [CHANGELOG.md](CHANGELOG.md) for full release history.
+
 ## License
 
 [MIT](LICENSE)
