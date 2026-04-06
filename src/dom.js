@@ -17,6 +17,20 @@ import { normalizeText, uniqueElements, clamp } from './text.js';
 
 // ---- Internal helpers (not exported) ----
 
+/**
+ * Build an effective message selector: profile-specific first, then generic fallback.
+ * Returns a combined CSS selector string.
+ */
+function getEffectiveMessageSelector() {
+  var profile = getCurrentSiteProfile();
+  if (profile && profile.messageSelector) {
+    // Profile selectors come first for priority in querySelectorAll ordering,
+    // then append generic MESSAGE_SELECTOR for fallback coverage.
+    return profile.messageSelector + ", " + MESSAGE_SELECTOR;
+  }
+  return MESSAGE_SELECTOR;
+}
+
 function isUsableScopeRoot(element) {
   if (!element || !(element instanceof Element)) {
     return false;
@@ -46,16 +60,25 @@ function getScopeRootSelectors() {
   return selectors;
 }
 
-function detectMessageRoleFromSignals(value) {
+function detectMessageRoleFromSignals(value, extraAssistantMarkers) {
   const signals = String(value || "").toLowerCase();
   if (!signals) {
     return "";
   }
-  if (/(^|[^a-z])(user|human|prompt)([^a-z]|$)/.test(signals)) {
+  if (/(^|[^a-z])(user|human|prompt|query)([^a-z]|$)/.test(signals)) {
     return "user";
   }
   if (/(^|[^a-z])(assistant|model|response|claude|gemini|codex|chatgpt)([^a-z]|$)/.test(signals)) {
     return "assistant";
+  }
+  // Check profile-supplied assistant markers as extended fallback
+  if (Array.isArray(extraAssistantMarkers)) {
+    for (var i = 0; i < extraAssistantMarkers.length; i += 1) {
+      var marker = extraAssistantMarkers[i];
+      if (marker && new RegExp("(^|[^a-z])" + marker + "([^a-z]|$)").test(signals)) {
+        return "assistant";
+      }
+    }
   }
   return "";
 }
@@ -237,6 +260,16 @@ export function findMessageContainer(element) {
     return null;
   }
 
+  // Profile-first: try site-specific selector for a tighter match
+  var profile = getCurrentSiteProfile();
+  if (profile && profile.messageSelector) {
+    var profileCandidate = element.closest(profile.messageSelector);
+    if (isLikelyMessageContainer(profileCandidate)) {
+      return profileCandidate;
+    }
+  }
+
+  // Generic fallback
   const candidate = element.closest(MESSAGE_SELECTOR);
   return isLikelyMessageContainer(candidate) ? candidate : null;
 }
@@ -247,11 +280,13 @@ export function collectMessageContainers(scope) {
     return [];
   }
 
+  var effectiveSelector = getEffectiveMessageSelector();
+
   const candidates = [];
-  if (root.matches && root.matches(MESSAGE_SELECTOR)) {
+  if (root.matches && root.matches(effectiveSelector)) {
     candidates.push(root);
   }
-  candidates.push.apply(candidates, Array.from(root.querySelectorAll(MESSAGE_SELECTOR)));
+  candidates.push.apply(candidates, Array.from(root.querySelectorAll(effectiveSelector)));
 
   return uniqueElements(
     candidates.filter(function (element) {
@@ -265,6 +300,20 @@ export function getMessageRole(element) {
     return "";
   }
 
+  // Profile-first: check site-specific role attributes before generic signals
+  var profile = getCurrentSiteProfile();
+  var extraMarkers = (profile && Array.isArray(profile.assistantMarkers)) ? profile.assistantMarkers : null;
+  if (profile && Array.isArray(profile.roleAttrs)) {
+    var profileSignals = profile.roleAttrs
+      .map(function (attr) { return element.getAttribute(attr) || ""; })
+      .join(" ");
+    var profileRole = detectMessageRoleFromSignals(profileSignals, extraMarkers);
+    if (profileRole) {
+      return profileRole;
+    }
+  }
+
+  // Generic fallback: broad signal collection
   return detectMessageRoleFromSignals([
     element.getAttribute("data-message-author-role"),
     element.getAttribute("data-author-role"),
@@ -273,7 +322,7 @@ export function getMessageRole(element) {
     element.getAttribute("aria-label"),
     element.id,
     typeof element.className === "string" ? element.className : ""
-  ].join(" "));
+  ].join(" "), extraMarkers);
 }
 
 export function findUserMessageTextContainer(message) {
@@ -481,6 +530,29 @@ export function findViewportBlock() {
   }
 
   return visible[0] ? visible[0].block : blocks[0];
+}
+
+/**
+ * Minimal site-ready check for bookmark loading.
+ * For GPT: always ready (existing behavior preserved).
+ * For Claude/Gemini: scope root must be present and usable.
+ * Returns true when the page is structurally ready for bookmark operations.
+ */
+export function isBookmarkSiteReady() {
+  var profile = getCurrentSiteProfile();
+  // GPT or unknown sites: always ready (preserve existing behavior)
+  if (!profile || profile.id === "openai") {
+    return true;
+  }
+  // Claude/Gemini: require a usable scope root
+  var selectors = getScopeRootSelectors();
+  for (var i = 0; i < selectors.length; i += 1) {
+    var candidate = document.querySelector(selectors[i]);
+    if (isUsableScopeRoot(candidate)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export function createSvgElement(tagName, attributes) {

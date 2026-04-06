@@ -1934,6 +1934,13 @@
   background: #d06830;
 }
 
+.cgptbm-update-banner__credit {
+  margin-top: 16px;
+  font-size: 11px;
+  color: #888;
+  text-align: center;
+}
+
 @keyframes cgptbm-banner-in {
   from {
     opacity: 0;

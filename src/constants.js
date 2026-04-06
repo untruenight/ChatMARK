@@ -59,7 +59,11 @@ export const SITE_PROFILES = [
     conversationPathTokens: ["c", "chat", "conversation", "conversations", "codex"],
     conversationQueryKeys: ["conversationId", "conversation_id", "chatId", "chat_id", "threadId", "thread_id", "c"],
     messageIdAttr: "data-message-id",
-    userTextSelector: ""
+    userTextSelector: "",
+    // ---- profile-aware DOM contract ----
+    messageSelector: "[data-message-author-role], [data-testid*='conversation-turn']",
+    roleAttrs: ["data-message-author-role", "data-author-role", "data-role"],
+    assistantMarkers: ["assistant", "chatgpt", "codex"]
   },
   {
     id: "claude",
@@ -68,7 +72,11 @@ export const SITE_PROFILES = [
     conversationPathTokens: ["chat", "conversation", "conversations", "project"],
     conversationQueryKeys: ["conversationId", "conversation_id", "chatId", "chat_id", "threadId", "thread_id", "c"],
     messageIdAttr: "",
-    userTextSelector: "p, div[class*='user'], div[class*='human']"
+    userTextSelector: "p, div[class*='user'], div[class*='human']",
+    // ---- profile-aware DOM contract ----
+    messageSelector: "[data-testid='user-message'], [data-testid='assistant-message'], [data-testid*='chat-turn'], [data-is-streaming], div[class*='font-claude-message'], div[class*='font-user-message']",
+    roleAttrs: ["data-testid", "data-role"],
+    assistantMarkers: ["assistant", "claude", "model"]
   },
   {
     id: "gemini",
@@ -77,7 +85,11 @@ export const SITE_PROFILES = [
     conversationPathTokens: ["app", "chat", "conversation", "conversations"],
     conversationQueryKeys: ["conversationId", "conversation_id", "chatId", "chat_id", "threadId", "thread_id", "c"],
     messageIdAttr: "",
-    userTextSelector: "p, div[data-text-content], div[class*='query']"
+    userTextSelector: "p, div[data-text-content], div[class*='query']",
+    // ---- profile-aware DOM contract ----
+    messageSelector: "message-content, .conversation-container > [data-turn-id], [data-message-id], div[class*='query-content'], div[class*='response-container'], div[class*='model-response']",
+    roleAttrs: ["data-author-role", "data-role"],
+    assistantMarkers: ["assistant", "gemini", "model", "response"]
   }
 ];
 
@@ -191,9 +203,14 @@ export const FRAME_RELAY_DEBUG_QUERY_PARAM = "cgptbmFrameDebug";
 export const FRAME_RELAY_DEBUG_STORAGE_KEY = "cgptbm:debug:frame-relay";
 
 // ---- Update banner ----
-export const APP_VERSION = "1.0.0";
+export const APP_VERSION = "1.1.0-beta";
 export const UPDATE_DISMISSED_STORAGE_KEY = "cgptbm:update:dismissed";
 export const RELEASE_NOTES = {
+  "1.1.0-beta": [
+    "Internal code modularization for maintainability",
+    "Preparing multi-platform support (coming soon)",
+    "Improved site-ready stability guard"
+  ],
   "1.0.0": [
     "First official release",
     "Bookmark any text in ChatGPT conversations",

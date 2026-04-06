@@ -185,6 +185,9 @@ import { setCaptureSelectionCallbacks, setCaptureResolveCallbacks } from './capt
 // --- Anchor: Resolve (capture 콜백 와이어링용) ---
 import { buildTargetTextMap, domPositionToRawOffset } from './resolve.js';
 
+// --- DOM: site-ready guard ---
+import { isBookmarkSiteReady } from './dom.js';
+
 
 // ============================================================
 // 콜백 와이어링 — 순환 의존 방지를 위한 콜백 주입
@@ -334,6 +337,24 @@ setHistoryCallbacks({
   // 최상위 프레임 — 전체 부트스트랩
   bootstrap();
 
+  // ---- waitForBookmarkSiteReady: site-ready guard with fail-safe ----
+  function waitForBookmarkSiteReady(callback) {
+    if (isBookmarkSiteReady()) {
+      callback();
+      return;
+    }
+    var elapsed = 0;
+    var interval = 200;
+    var maxWait = 3000;
+    var timer = window.setInterval(function () {
+      elapsed += interval;
+      if (isBookmarkSiteReady() || elapsed >= maxWait) {
+        window.clearInterval(timer);
+        callback();
+      }
+    }, interval);
+  }
+
   function bootstrap() {
     const start = function () {
       state.currentUrlKey = getCurrentUrlKey();
@@ -342,7 +363,7 @@ setHistoryCallbacks({
       bindGlobalListeners();
       syncFrameRelayDebugState();
       scheduleSandboxCardTriggerRender();
-      loadBookmarks();
+      waitForBookmarkSiteReady(function () { loadBookmarks(); });
       showUpdateBannerIfNeeded();
     };
 
@@ -723,10 +744,15 @@ setHistoryCallbacks({
         state._updateBannerDismissed = APP_VERSION;
       });
 
+      var credit = document.createElement("div");
+      credit.className = "cgptbm-update-banner__credit";
+      credit.textContent = "ChatMARK by untruenight";
+
       banner.appendChild(title);
       banner.appendChild(subtitle);
       banner.appendChild(list);
       banner.appendChild(closeBtn);
+      banner.appendChild(credit);
 
       if (state.root) {
         state.root.appendChild(banner);
@@ -756,7 +782,7 @@ setHistoryCallbacks({
     closeSavePopup();
     resetAddTabFeedback();
     syncFrameRelayDebugState();
-    loadBookmarks();
+    waitForBookmarkSiteReady(function () { loadBookmarks(); });
   }
 
   // ---- handleKeydown: 키보드 단축키 ----

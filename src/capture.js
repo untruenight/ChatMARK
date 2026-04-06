@@ -101,77 +101,133 @@ function extractMessageStableId(messageElement, siteProfile) {
 }
 
 export function captureAnchor() {
-  const selection = window.getSelection();
-  const selectionText = selection && !selection.isCollapsed ? normalizeText(selection.toString()) : "";
-  const selectionElement = _getSelectionElement ? _getSelectionElement(selection) : null;
+  var ctx = collectAnchorContext();
+  if (!ctx) {
+    return null;
+  }
+  return buildAnchorPayload(ctx);
+}
+
+// ---- Seam 1: context collection ----
+
+function collectAnchorContext() {
+  var selection = window.getSelection();
+  var selectionElement = _getSelectionElement ? _getSelectionElement(selection) : null;
   if (selection && !selection.isCollapsed && _isEditableTextSelectionTarget && _isEditableTextSelectionTarget(selectionElement)) {
     return null;
   }
-  const block = findAnchorBlock(selectionElement) || findViewportBlock();
-
+  var block = findAnchorBlock(selectionElement) || findViewportBlock();
   if (!block) {
     return null;
   }
 
-  const message = findMessageContainer(block);
-  const messageStableId = extractMessageStableId(message, getCurrentSiteProfile());
-  const allBlocks = collectAnchorBlocks();
-  const blocksInMessage = message ? collectAnchorBlocks(message) : [];
-  const blockText = getElementText(block);
-  const selectionDetails = getSelectionAnchorDetails(block, selection, blockText);
-  const selectionSpanDetails = getSelectionSpanDetails(selection);
-  const selectionDisplayText = captureStructuredSelectionDisplayText(selection, {
-    preserveWhitespace: Boolean(selectionDetails && selectionDetails.isCodeBlock)
-  });
-  const userExactDetails = getUserMessageExactSelectionDetails(message, selection);
-  const neighborAssistant = findNeighborAssistantInfo(message);
-
+  var blockText = getElementText(block);
   if (!blockText) {
     return null;
   }
+
+  var message = findMessageContainer(block);
+  var profile = getCurrentSiteProfile();
+  var messageStableId = extractMessageStableId(message, profile);
+  var allBlocks = collectAnchorBlocks();
+  var blocksInMessage = message ? collectAnchorBlocks(message) : [];
+  var allMessages = message ? collectMessageContainers() : [];
+
+  // Context: message-level metadata (strengthened for messageStableId-empty sites)
+  var messageText = message ? getElementText(message) : "";
+  var messageCtx = {
+    element: message,
+    stableId: messageStableId,
+    fingerprint: message ? fingerprintText(messageText) : "",
+    role: message ? getMessageRole(message) : "",
+    index: message ? allMessages.indexOf(message) : -1,
+    blockCount: blocksInMessage.length,
+    siteId: profile ? profile.id : ""
+  };
+
+  // Context: selection-level details
+  var selectionText = selection && !selection.isCollapsed ? normalizeText(selection.toString()) : "";
+  var selectionDetails = getSelectionAnchorDetails(block, selection, blockText);
+  var selectionSpanDetails = getSelectionSpanDetails(selection);
+  var selectionDisplayText = captureStructuredSelectionDisplayText(selection, {
+    preserveWhitespace: Boolean(selectionDetails && selectionDetails.isCodeBlock)
+  });
+  var userExactDetails = getUserMessageExactSelectionDetails(message, selection);
+  var neighborAssistant = findNeighborAssistantInfo(message);
+
+  return {
+    block: block,
+    blockText: blockText,
+    allBlocks: allBlocks,
+    blocksInMessage: blocksInMessage,
+    message: messageCtx,
+    selection: selection,
+    selectionText: selectionText,
+    selectionDetails: selectionDetails,
+    selectionSpanDetails: selectionSpanDetails,
+    selectionDisplayText: selectionDisplayText,
+    userExactDetails: userExactDetails,
+    neighborAssistant: neighborAssistant
+  };
+}
+
+// ---- Seam 2: payload assembly ----
+
+function buildAnchorPayload(ctx) {
+  var block = ctx.block;
+  var blockText = ctx.blockText;
+  var msg = ctx.message;
+  var sel = ctx.selection;
+  var sd = ctx.selectionDetails;
+  var span = ctx.selectionSpanDetails;
+  var ued = ctx.userExactDetails;
+  var na = ctx.neighborAssistant;
 
   return {
     anchorId: block.id || "",
     blockTag: block.tagName.toLowerCase(),
     blockFingerprint: fingerprintText(blockText),
-    messageFingerprint: message ? fingerprintText(getElementText(message)) : "",
-    messageRole: message ? getMessageRole(message) : "",
-    blockIndex: allBlocks.indexOf(block),
-    blockIndexInMessage: blocksInMessage.indexOf(block),
-    messageIndex: message ? collectMessageContainers().indexOf(message) : -1,
+    messageFingerprint: msg.fingerprint,
+    messageRole: msg.role,
+    blockIndex: ctx.allBlocks.indexOf(block),
+    blockIndexInMessage: ctx.blocksInMessage.indexOf(block),
+    messageIndex: msg.index,
     scrollRatio: getElementScrollRatio(block),
-    selectionText: truncateText(selectionText, MAX_CAPTURED_SELECTION_LENGTH),
-    selectionDisplayText: selectionDisplayText,
-    selectionTextRaw: selection && !selection.isCollapsed ? truncateRawText(selection.toString(), MAX_CAPTURED_SELECTION_RAW_LENGTH) : "",
+    selectionText: truncateText(ctx.selectionText, MAX_CAPTURED_SELECTION_LENGTH),
+    selectionDisplayText: ctx.selectionDisplayText,
+    selectionTextRaw: sel && !sel.isCollapsed ? truncateRawText(sel.toString(), MAX_CAPTURED_SELECTION_RAW_LENGTH) : "",
     blockTextSnippet: truncateText(blockText, 220),
-    selectionStart: selectionDetails ? selectionDetails.start : -1,
-    selectionLength: selectionDetails ? selectionDetails.length : -1,
-    selectionStartRatio: selectionDetails ? selectionDetails.startRatio : -1,
-    selectionPrefix: selectionDetails ? selectionDetails.prefix : "",
-    selectionSuffix: selectionDetails ? selectionDetails.suffix : "",
-    selectionContextFingerprint: selectionDetails ? selectionDetails.contextFingerprint : "",
-    selectionExactStart: userExactDetails ? userExactDetails.start : -1,
-    selectionExactEnd: userExactDetails ? userExactDetails.end : -1,
-    selectionRawPrefix: userExactDetails ? userExactDetails.prefix : "",
-    selectionRawSuffix: userExactDetails ? userExactDetails.suffix : "",
-    selectionExactRatioStart: userExactDetails ? (userExactDetails.ratioStart != null ? userExactDetails.ratioStart : -1) : -1,
-    selectionExactRatioEnd: userExactDetails ? (userExactDetails.ratioEnd != null ? userExactDetails.ratioEnd : -1) : -1,
-    selectionCodeOffsetStart: selectionDetails ? selectionDetails.codeOffsetStart : -1,
-    selectionCodeOffsetEnd: selectionDetails ? selectionDetails.codeOffsetEnd : -1,
-    selectionCodeLine: selectionDetails ? selectionDetails.codeLine : -1,
-    selectionCodeColumn: selectionDetails ? selectionDetails.codeColumn : -1,
-    selectionCodeContextFingerprint: selectionDetails ? selectionDetails.codeContextFingerprint : "",
-    selectionSpanStartFingerprint: selectionSpanDetails ? selectionSpanDetails.startBlockFingerprint : "",
-    selectionSpanEndFingerprint: selectionSpanDetails ? selectionSpanDetails.endBlockFingerprint : "",
-    selectionSpanBlockCount: selectionSpanDetails ? selectionSpanDetails.blockCount : -1,
-    selectionSpanHead: selectionSpanDetails ? selectionSpanDetails.head : "",
-    selectionSpanMiddle: selectionSpanDetails ? selectionSpanDetails.middle : "",
-    selectionSpanTail: selectionSpanDetails ? selectionSpanDetails.tail : "",
-    selectionSpanMarkerSignature: selectionSpanDetails ? selectionSpanDetails.markerSignature : "",
-    neighborAssistantFingerprint: neighborAssistant ? neighborAssistant.fingerprint : "",
-    neighborAssistantDirection: neighborAssistant ? neighborAssistant.direction : "",
-    neighborAssistantBlockSnippet: neighborAssistant ? neighborAssistant.blockSnippet : "",
-    messageStableId: messageStableId
+    selectionStart: sd ? sd.start : -1,
+    selectionLength: sd ? sd.length : -1,
+    selectionStartRatio: sd ? sd.startRatio : -1,
+    selectionPrefix: sd ? sd.prefix : "",
+    selectionSuffix: sd ? sd.suffix : "",
+    selectionContextFingerprint: sd ? sd.contextFingerprint : "",
+    selectionExactStart: ued ? ued.start : -1,
+    selectionExactEnd: ued ? ued.end : -1,
+    selectionRawPrefix: ued ? ued.prefix : "",
+    selectionRawSuffix: ued ? ued.suffix : "",
+    selectionExactRatioStart: ued ? (ued.ratioStart != null ? ued.ratioStart : -1) : -1,
+    selectionExactRatioEnd: ued ? (ued.ratioEnd != null ? ued.ratioEnd : -1) : -1,
+    selectionCodeOffsetStart: sd ? sd.codeOffsetStart : -1,
+    selectionCodeOffsetEnd: sd ? sd.codeOffsetEnd : -1,
+    selectionCodeLine: sd ? sd.codeLine : -1,
+    selectionCodeColumn: sd ? sd.codeColumn : -1,
+    selectionCodeContextFingerprint: sd ? sd.codeContextFingerprint : "",
+    selectionSpanStartFingerprint: span ? span.startBlockFingerprint : "",
+    selectionSpanEndFingerprint: span ? span.endBlockFingerprint : "",
+    selectionSpanBlockCount: span ? span.blockCount : -1,
+    selectionSpanHead: span ? span.head : "",
+    selectionSpanMiddle: span ? span.middle : "",
+    selectionSpanTail: span ? span.tail : "",
+    selectionSpanMarkerSignature: span ? span.markerSignature : "",
+    neighborAssistantFingerprint: na ? na.fingerprint : "",
+    neighborAssistantDirection: na ? na.direction : "",
+    neighborAssistantBlockSnippet: na ? na.blockSnippet : "",
+    messageStableId: msg.stableId,
+    // Additive fields: strengthen anchor for sites without messageStableId
+    messageSiteId: msg.siteId,
+    messageBlockCount: msg.blockCount
   };
 }
 
