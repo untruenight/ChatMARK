@@ -203,10 +203,10 @@ export const FRAME_RELAY_DEBUG_QUERY_PARAM = "cgptbmFrameDebug";
 export const FRAME_RELAY_DEBUG_STORAGE_KEY = "cgptbm:debug:frame-relay";
 
 // ---- Update banner ----
-export const APP_VERSION = "1.1.0-beta";
+export const APP_VERSION = "1.1.0";
 export const UPDATE_DISMISSED_STORAGE_KEY = "cgptbm:update:dismissed";
 export const RELEASE_NOTES = {
-  "1.1.0-beta": [
+  "1.1.0": [
     "Bookmark export/import (save & restore from file)",
     "Internal code modularization for maintainability",
     "Preparing multi-platform support (coming soon)",

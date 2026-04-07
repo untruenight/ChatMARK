@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.1.0-beta
+## v1.1.0
 
 ### Code Modularization
 - Split `rail.js` (4,916 lines) into 12 focused submodules
