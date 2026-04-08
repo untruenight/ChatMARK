@@ -17,7 +17,8 @@ import {
   SANDBOX_CARD_HIGHLIGHT_FADE_IN_DURATION,
   SANDBOX_CARD_HIGHLIGHT_HOLD_DURATION,
   SANDBOX_CARD_HIGHLIGHT_FADE_OUT_DURATION,
-  SANDBOX_CARD_HIGHLIGHT_EXIT_FADE_OUT_DURATION
+  SANDBOX_CARD_HIGHLIGHT_EXIT_FADE_OUT_DURATION,
+  msg
 } from './constants.js';
 import { normalizeText, truncateText, fingerprintText, fingerprintRawText, truncateRawText, clamp } from './text.js';
 import { getScopeRoot, getCurrentSiteProfile, getElementText, getElementScrollRatio } from './dom.js';
@@ -904,8 +905,8 @@ export function renderSandboxCardTriggers() {
   button.type = "button";
   button.className = "cgptbm-sandbox-card-trigger";
   button.textContent = "MARK";
-  button.title = "Mark Claude widget card";
-  button.setAttribute("aria-label", "Mark Claude widget card");
+  button.title = msg("markWidget");
+  button.setAttribute("aria-label", msg("markWidget"));
   button.style.top = position.top + "px";
   button.style.left = position.left + "px";
   button.addEventListener("pointerenter", function () {

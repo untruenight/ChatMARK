@@ -12,7 +12,8 @@ import {
   POPUP_MIN_WIDTH,
   POPUP_MAX_WIDTH,
   POPUP_MIN_HEIGHT,
-  POPUP_MAX_HEIGHT
+  POPUP_MAX_HEIGHT,
+  msg
 } from './constants.js';
 import { normalizeText, createLabel, clamp } from './text.js';
 import { createSvgElement } from './dom.js';
@@ -362,8 +363,8 @@ function createColorButtons(selectedColorIndex, onSelect) {
     colorButton.type = "button";
     colorButton.className = "cgptbm-popup__color";
     colorButton.dataset.colorIndex = String(index);
-    colorButton.title = "Select bookmark color";
-    colorButton.setAttribute("aria-label", "Select bookmark color " + (index + 1));
+    colorButton.title = msg("selectColor");
+    colorButton.setAttribute("aria-label", msg("selectColor") + " " + (index + 1));
     colorButton.style.setProperty("--cgptbm-popup-color", color);
     colorButton.onmousedown = preventFocusSteal;
     colorButton.onclick = function (event) {
@@ -390,8 +391,8 @@ function setPopupColorPaletteOpen(popup, isOpen) {
   if (toggleButton) {
     toggleButton.classList.toggle("is-open", nextIsOpen);
     toggleButton.setAttribute("aria-expanded", nextIsOpen ? "true" : "false");
-    toggleButton.title = nextIsOpen ? "Hide bookmark colors" : "Show bookmark colors";
-    toggleButton.setAttribute("aria-label", nextIsOpen ? "Hide bookmark colors" : "Show bookmark colors");
+    toggleButton.title = nextIsOpen ? msg("hideColors") : msg("showColors");
+    toggleButton.setAttribute("aria-label", nextIsOpen ? msg("hideColors") : msg("showColors"));
   }
 }
 
@@ -499,12 +500,12 @@ export function openSavePopup(anchor, popupPosition, options) {
   input.className = "cgptbm-popup__input";
   input.value = typeof nextOptions.initialValue === "string" ? nextOptions.initialValue : getDefaultPopupLabel(anchor);
   input.maxLength = 80;
-  input.setAttribute("aria-label", "Bookmark name");
+  input.setAttribute("aria-label", msg("bookmarkName"));
 
   const saveButton = document.createElement("button");
   saveButton.type = "submit";
   saveButton.className = "cgptbm-popup__save";
-  saveButton.textContent = "Save";
+  saveButton.textContent = msg("save");
 
   row.appendChild(colorToggleButton);
   row.appendChild(input);
@@ -671,7 +672,7 @@ export function handleBookmarkColorPickerOpen(bookmarkId, event) {
   popup.style.top = popupPosition.top + "px";
   popup.style.left = popupPosition.left + "px";
   popup.style.right = "auto";
-  popup.setAttribute("aria-label", "Bookmark color picker");
+  popup.setAttribute("aria-label", msg("colorPicker"));
 
   const colors = createColorButtons(bookmark.colorIndex, function (colorIndex, colorEvent) {
     handleBookmarkColorChange(bookmarkId, colorIndex, colorEvent);

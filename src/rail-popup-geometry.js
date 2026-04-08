@@ -9,7 +9,8 @@ import state from './state.js';
 import { clamp } from './text.js';
 import {
   COLLAPSED_TAB_HEIGHT, TAB_STACK_GAP,
-  POPUP_MIN_WIDTH, POPUP_MIN_HEIGHT
+  POPUP_MIN_WIDTH, POPUP_MIN_HEIGHT,
+  msg
 } from './constants.js';
 import {
   normalizePopupLayout, getPopupViewportMaxWidth, getPopupContentMaxWidth,
@@ -451,15 +452,15 @@ export function syncPopupOverflowIndicator(popup) {
   if (popupMoreButton) {
     const isResized = !isExpanded && isLargerThanMinimum;
     popupMoreButton.hidden = !hasOverflow && !isResized;
-    popupMoreButton.textContent = "max";
-    popupMoreButton.title = "Maximize note";
-    popupMoreButton.setAttribute("aria-label", "Maximize note");
+    popupMoreButton.textContent = msg("maxLabel");
+    popupMoreButton.title = msg("maximize");
+    popupMoreButton.setAttribute("aria-label", msg("maximize"));
   }
   if (popupMinButton) {
     popupMinButton.hidden = !showMin;
-    popupMinButton.textContent = "min";
-    popupMinButton.title = "Collapse note";
-    popupMinButton.setAttribute("aria-label", "Collapse note");
+    popupMinButton.textContent = msg("minLabel");
+    popupMinButton.title = msg("collapse");
+    popupMinButton.setAttribute("aria-label", msg("collapse"));
   }
 }
 

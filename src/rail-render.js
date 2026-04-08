@@ -11,7 +11,7 @@
 
 import state from './state.js';
 import {
-  COLLAPSED_TAB_HEIGHT
+  COLLAPSED_TAB_HEIGHT, msg
 } from './constants.js';
 import {
   applyCurrentBookmarks
@@ -468,10 +468,10 @@ export function renderBookmarks() {
   if (!state.currentBookmarks.length) {
     resetExpandedBookmarkState();
     const emptyTab = createTabElement({
-      label: "Drag to select text",
+      label: msg("dragToSelect"),
       edgeText: "\u2022",
       accent: "#94a3b8",
-      title: "Add a bookmark from your current selection or visible message."
+      title: msg("addBookmarkHint")
     });
     emptyTab.classList.add("cgptbm-tab--empty");
     emptyTab.style.top = getBookmarkTabTopLimit() + "px";
@@ -489,13 +489,13 @@ export function renderBookmarks() {
   if (!visibleBookmarks.length) {
     const totalCount = state.currentBookmarks.length;
     const emptyTab = createTabElement({
-      label: "No matches",
+      label: msg("noMatches"),
       edgeText: "?",
       accent: "#94a3b8",
-      title: 'No bookmarks on this page match "' + state.bookmarkSearchQuery + '". ' +
+      title: msg("noMatchesPrefix") + state.bookmarkSearchQuery + '". ' +
         (totalCount === 1
-          ? "1 bookmark is still saved on this page."
-          : totalCount + " bookmarks are still saved on this page.")
+          ? msg("noMatchesDetail_one")
+          : totalCount + msg("noMatchesDetail_other"))
     });
     emptyTab.classList.add("cgptbm-tab--empty");
     emptyTab.style.top = getBookmarkTabTopLimit() + "px";

@@ -6,7 +6,7 @@
 
 import state from './state.js';
 import { normalizeText } from './text.js';
-import { MAX_BOOKMARKS_PER_PAGE } from './constants.js';
+import { MAX_BOOKMARKS_PER_PAGE, msg } from './constants.js';
 import { closeBookmarkColorPicker, closeSavePopup } from './popup.js';
 
 // ============================================================
@@ -220,15 +220,15 @@ export function createBookmarkSearchRow() {
   input.value = state.bookmarkSearchQuery;
   input.autocomplete = "off";
   input.spellcheck = false;
-  input.setAttribute("aria-label", "Search current page bookmarks");
+  input.setAttribute("aria-label", msg("searchPlaceholder"));
   input.addEventListener("input", handleBookmarkSearchInput);
 
   const clearButton = document.createElement("button");
   clearButton.type = "button";
   clearButton.className = "cgptbm-history-controls__search-clear";
   clearButton.textContent = "x";
-  clearButton.title = "Clear bookmark search";
-  clearButton.setAttribute("aria-label", "Clear bookmark search");
+  clearButton.title = msg("clearSearch");
+  clearButton.setAttribute("aria-label", msg("clearSearch"));
   clearButton.onmousedown = preventFocusSteal;
   clearButton.onclick = handleBookmarkSearchClear;
 
@@ -282,8 +282,8 @@ export function syncBookmarkSearchControls() {
     }
     searchInput.disabled = !state.railEnabled || (!hasBookmarks && !hasQuery);
     searchInput.placeholder = hasBookmarks || hasQuery
-      ? (state.currentBookmarks.length === 1 ? "Search Tab" : "Search Tabs")
-      : "Drag to select text";
+      ? (state.currentBookmarks.length === 1 ? msg("searchTab") : msg("searchTabs"))
+      : msg("dragToSelect");
   }
 
   if (clearButton) {

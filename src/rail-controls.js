@@ -9,7 +9,8 @@ import state from './state.js';
 import { clamp } from './text.js';
 import {
   RAIL_OPACITY_STORAGE_KEY, RAIL_ENABLED_STORAGE_KEY,
-  DEFAULT_RAIL_OPACITY, MIN_RAIL_OPACITY, MAX_RAIL_OPACITY
+  DEFAULT_RAIL_OPACITY, MIN_RAIL_OPACITY, MAX_RAIL_OPACITY,
+  msg
 } from './constants.js';
 import { storageSet } from './storage.js';
 import { closeSavePopup, closeBookmarkColorPicker } from './popup.js';
@@ -24,7 +25,7 @@ import {
   canUndoBookmarkHistory, canRedoBookmarkHistory,
   handleUndoBookmarkHistory, handleRedoBookmarkHistory
 } from './history.js';
-import { syncRailViewportTop, HISTORY_CONTROLS_DEFAULT_TOP } from './rail-viewport.js';
+import { syncRailViewportTop, getHistoryControlsTop } from './rail-viewport.js';
 import { clearBookmarkDragSession } from './rail-dnd.js';
 import { endPopupResizeSession } from './rail-popup-tab.js';
 import { hideSandboxCardHighlight, scheduleSandboxCardTriggerRender } from './sandbox-card.js';
@@ -91,7 +92,7 @@ function handleBackupButtonClick(event) {
   var saveBtn = document.createElement("button");
   saveBtn.type = "button";
   saveBtn.className = "cgptbm-backup-dropdown__item";
-  saveBtn.textContent = "Save bookmarks to file";
+  saveBtn.textContent = msg("saveToFile");
   saveBtn.addEventListener("pointerdown", function (e) {
     e.preventDefault();
     e.stopPropagation();
@@ -105,7 +106,7 @@ function handleBackupButtonClick(event) {
   var restoreBtn = document.createElement("button");
   restoreBtn.type = "button";
   restoreBtn.className = "cgptbm-backup-dropdown__item";
-  restoreBtn.textContent = "Restore bookmarks from file";
+  restoreBtn.textContent = msg("restoreFromFile");
   restoreBtn.addEventListener("pointerdown", function (e) {
     e.preventDefault();
     e.stopPropagation();
@@ -118,7 +119,7 @@ function handleBackupButtonClick(event) {
 
   var warning = document.createElement("div");
   warning.className = "cgptbm-backup-dropdown__warning";
-  warning.textContent = "\u26A0 Uninstalling ChatMARK without backup will permanently delete all bookmarks.";
+  warning.textContent = msg("uninstallWarning");
 
   dropdown.appendChild(saveBtn);
   dropdown.appendChild(restoreBtn);
@@ -207,8 +208,8 @@ function createBookmarkHistoryControls() {
   undoButton.type = "button";
   undoButton.className = "cgptbm-history-controls__capsule-button";
   undoButton.dataset.historyAction = "undo";
-  undoButton.title = "Undo bookmark add or remove";
-  undoButton.setAttribute("aria-label", "Undo bookmark add or remove");
+  undoButton.title = msg("undoBookmark");
+  undoButton.setAttribute("aria-label", msg("undoBookmark"));
   undoButton.onmousedown = preventFocusSteal;
   undoButton.onclick = handleUndoBookmarkHistory;
   undoButton.appendChild(createBookmarkHistoryIcon("undo"));
@@ -217,8 +218,8 @@ function createBookmarkHistoryControls() {
   redoButton.type = "button";
   redoButton.className = "cgptbm-history-controls__capsule-button";
   redoButton.dataset.historyAction = "redo";
-  redoButton.title = "Redo bookmark add or remove";
-  redoButton.setAttribute("aria-label", "Redo bookmark add or remove");
+  redoButton.title = msg("redoBookmark");
+  redoButton.setAttribute("aria-label", msg("redoBookmark"));
   redoButton.onmousedown = preventFocusSteal;
   redoButton.onclick = handleRedoBookmarkHistory;
   redoButton.appendChild(createBookmarkHistoryIcon("redo"));
@@ -232,8 +233,8 @@ function createBookmarkHistoryControls() {
   const backupButton = document.createElement("button");
   backupButton.type = "button";
   backupButton.className = "cgptbm-history-controls__backup";
-  backupButton.title = "Save or restore bookmarks";
-  backupButton.setAttribute("aria-label", "Save or restore bookmarks");
+  backupButton.title = msg("saveOrRestore");
+  backupButton.setAttribute("aria-label", msg("saveOrRestore"));
   backupButton.addEventListener("pointerdown", function (e) {
     e.preventDefault();
     e.stopPropagation();
@@ -249,8 +250,8 @@ function createBookmarkHistoryControls() {
   const toggleButton = document.createElement("button");
   toggleButton.type = "button";
   toggleButton.className = "cgptbm-history-controls__toggle";
-  toggleButton.title = "Disable bookmark rail";
-  toggleButton.setAttribute("aria-label", "Disable bookmark rail");
+  toggleButton.title = msg("disableRail");
+  toggleButton.setAttribute("aria-label", msg("disableRail"));
   toggleButton.onmousedown = preventFocusSteal;
   toggleButton.onclick = handleRailEnabledToggle;
   const toggleIcon = document.createElement("span");
@@ -267,8 +268,8 @@ function createBookmarkHistoryControls() {
   slider.max = String(Math.round(MAX_RAIL_OPACITY * 100));
   slider.step = "5";
   slider.value = String(Math.round(normalizeRailOpacity(state.railOpacity) * 100));
-  slider.title = "Adjust bookmark rail opacity";
-  slider.setAttribute("aria-label", "Adjust bookmark rail opacity");
+  slider.title = msg("adjustOpacity");
+  slider.setAttribute("aria-label", msg("adjustOpacity"));
   slider.oninput = handleRailOpacitySliderInput;
   slider.onchange = handleRailOpacitySliderCommit;
   sliderRow.appendChild(slider);
@@ -278,8 +279,8 @@ function createBookmarkHistoryControls() {
   collapseButton.type = "button";
   collapseButton.className = "cgptbm-history-controls__button";
   collapseButton.dataset.historyAction = "collapse-all";
-  collapseButton.title = "Collapse all bookmarks";
-  collapseButton.setAttribute("aria-label", "Collapse all bookmarks");
+  collapseButton.title = msg("collapseAll");
+  collapseButton.setAttribute("aria-label", msg("collapseAll"));
   collapseButton.onmousedown = preventFocusSteal;
   collapseButton.onclick = handleCollapseAllToggle;
   collapseButton.appendChild(createButtonSvgIcon("tab-collapse"));
@@ -288,8 +289,8 @@ function createBookmarkHistoryControls() {
   tabExtendButton.type = "button";
   tabExtendButton.className = "cgptbm-history-controls__button";
   tabExtendButton.dataset.historyAction = "tab-extend";
-  tabExtendButton.title = "Extend all tabs";
-  tabExtendButton.setAttribute("aria-label", "Extend all tabs");
+  tabExtendButton.title = msg("extendTabs");
+  tabExtendButton.setAttribute("aria-label", msg("extendTabs"));
   tabExtendButton.onmousedown = preventFocusSteal;
   tabExtendButton.onclick = handleTabExtend;
   tabExtendButton.appendChild(createButtonSvgIcon("tab-extend"));
@@ -315,8 +316,8 @@ function createBookmarkHistoryControls() {
   postitExtendButton.type = "button";
   postitExtendButton.className = "cgptbm-history-controls__button";
   postitExtendButton.dataset.historyAction = "postit-extend";
-  postitExtendButton.title = "Extend all post-its";
-  postitExtendButton.setAttribute("aria-label", "Extend all post-its");
+  postitExtendButton.title = msg("extendPostits");
+  postitExtendButton.setAttribute("aria-label", msg("extendPostits"));
   postitExtendButton.onmousedown = preventFocusSteal;
   postitExtendButton.onclick = handlePostitExtend;
   postitExtendButton.appendChild(createButtonSvgIcon("postit-extend"));
@@ -361,7 +362,7 @@ function syncBookmarkHistoryControls(top) {
 
   const nextTop = Number.isFinite(top)
     ? Math.max(18, Math.round(top))
-    : HISTORY_CONTROLS_DEFAULT_TOP;
+    : getHistoryControlsTop();
   controls.style.top = nextTop + "px";
   controls.style.right = HISTORY_CONTROLS_RIGHT_OFFSET + "px";
   syncRailViewportTop();
@@ -388,8 +389,8 @@ function syncBookmarkHistoryControls(top) {
   }
   if (toggleButton) {
     toggleButton.classList.toggle("is-enabled", state.railEnabled);
-    toggleButton.title = state.railEnabled ? "Disable bookmark rail" : "Enable bookmark rail";
-    toggleButton.setAttribute("aria-label", state.railEnabled ? "Disable bookmark rail" : "Enable bookmark rail");
+    toggleButton.title = state.railEnabled ? msg("disableRail") : msg("enableRail");
+    toggleButton.setAttribute("aria-label", state.railEnabled ? msg("disableRail") : msg("enableRail"));
   }
 
   // ---- Tab Collapse ----
@@ -448,7 +449,7 @@ function syncBookmarkHistoryControls(top) {
 }
 
 export function syncBookmarkHistoryControlsToCurrentRail() {
-  syncBookmarkHistoryControls(HISTORY_CONTROLS_DEFAULT_TOP);
+  syncBookmarkHistoryControls(getHistoryControlsTop());
 }
 
 // ============================================================

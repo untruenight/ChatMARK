@@ -15,7 +15,7 @@ import { normalizeText, clamp, normalizeInteger } from './text.js';
 import {
   findMessageContainer, getMessageRole, getElementText,
   collectAnchorBlocks, findAnchorBlock, canElementContainText,
-  findUserMessageTextContainer
+  findUserMessageTextContainer, getCurrentSiteProfile
 } from './dom.js';
 import { isCodeAnchor, formatPopupDisplayText } from './capture.js';
 import {
@@ -113,7 +113,13 @@ function runTargetHighlight(target, bookmark, options) {
 
   // ---- Assistant / generic highlight (unchanged) ----
 
-  if (nextOptions.preferBlockHighlight || shouldPreferBlockHighlight(bookmark)) {
+  var _preferBlock = nextOptions.preferBlockHighlight || shouldPreferBlockHighlight(bookmark);
+  var _hlProfile = getCurrentSiteProfile();
+  if (_preferBlock && _hlProfile && _hlProfile.id === "gemini"
+      && target && target.matches && target.matches("p, li, pre, blockquote, h1, h2, h3, h4, h5, h6")) {
+    _preferBlock = false;
+  }
+  if (_preferBlock) {
     pulseTarget(target);
     if (_finishHiddenScrollTransaction) _finishHiddenScrollTransaction();
     return;

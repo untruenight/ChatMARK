@@ -11,6 +11,7 @@ import {
   RAIL_VIEWPORT_WIDTH, COLLAPSED_TAB_VISIBLE_EDGE_WIDTH,
   TAB_STACK_GAP
 } from './constants.js';
+import { getCurrentSiteProfile } from './dom.js';
 
 // ============================================================
 // Local constants
@@ -29,14 +30,20 @@ const TOP_RIGHT_BLOCKER_MAX_TOP = 240;
 const TOP_RIGHT_BLOCKER_MIN_WIDTH = 120;
 const TOP_RIGHT_BLOCKER_MIN_HEIGHT = 72;
 const TOP_RIGHT_BLOCKER_SELECTOR = [
+  // 공통
   "dialog[open]",
   "[role='dialog']",
   "[role='menu']",
   "[role='listbox']",
   "[aria-modal='true']",
+  // ChatGPT (Radix)
   "[data-radix-popper-content-wrapper]",
   "[data-radix-dropdown-menu-content]",
-  "[data-radix-popover-content]"
+  "[data-radix-popover-content]",
+  // Gemini (Angular CDK)
+  ".cdk-overlay-pane",
+  // Google 계정 패널
+  "iframe[name='account']"
 ].join(", ");
 export const HISTORY_CONTROLS_DEFAULT_TOP = 60;
 
@@ -48,23 +55,41 @@ function preventFocusSteal(event) {
   event.preventDefault();
 }
 
-function getHistoryControlsTop() {
-  return HISTORY_CONTROLS_DEFAULT_TOP;
+export function getHistoryControlsTop() {
+  var profile = getCurrentSiteProfile();
+  return (profile && Number.isFinite(profile.historyControlsTop))
+    ? profile.historyControlsTop
+    : HISTORY_CONTROLS_DEFAULT_TOP;
 }
 
 // ============================================================
 // GROUP 9 — Rail viewport
 // ============================================================
 
+export function getProfileRootRightOffset() {
+  var profile = getCurrentSiteProfile();
+  return (profile && Number.isFinite(profile.rootRightOffset))
+    ? profile.rootRightOffset
+    : ROOT_RIGHT_OFFSET;
+}
+
+export function getProfileViewportDefaultTop() {
+  var profile = getCurrentSiteProfile();
+  return (profile && Number.isFinite(profile.viewportDefaultTop))
+    ? profile.viewportDefaultTop
+    : RAIL_VIEWPORT_DEFAULT_TOP;
+}
+
 export function syncRailViewportTop() {
   if (!state.root) {
     return;
   }
 
+  var defaultTop = getProfileViewportDefaultTop();
   const controls = state.root.querySelector(".cgptbm-history-controls");
 
   if (!(controls instanceof HTMLElement)) {
-    state.root.style.setProperty("--cgptbm-rail-viewport-top", RAIL_VIEWPORT_DEFAULT_TOP + "px");
+    state.root.style.setProperty("--cgptbm-rail-viewport-top", defaultTop + "px");
     return;
   }
 
@@ -141,10 +166,11 @@ function syncTopRightUiProtection() {
     return;
   }
 
+  const baseRightOffset = getProfileRootRightOffset();
   const blockerRect = getTopRightBlockerRect();
   const nextRightOffset = blockerRect
-    ? Math.max(ROOT_RIGHT_OFFSET, Math.ceil(window.innerWidth - blockerRect.left + TOP_RIGHT_BLOCKER_SAFE_GAP + SCROLLBAR_RIGHT_OVERHANG))
-    : ROOT_RIGHT_OFFSET;
+    ? Math.max(baseRightOffset, Math.ceil(window.innerWidth - blockerRect.left + TOP_RIGHT_BLOCKER_SAFE_GAP + SCROLLBAR_RIGHT_OVERHANG))
+    : baseRightOffset;
   state.root.style.setProperty("--cgptbm-root-right", nextRightOffset + "px");
 }
 
@@ -170,7 +196,8 @@ function getTopRightBlockerRect() {
       return;
     }
 
-    if (!["fixed", "absolute", "sticky"].includes(style.position)) {
+    if (!["fixed", "absolute", "sticky"].includes(style.position)
+        && !candidate.matches(".cdk-overlay-pane, iframe[name='account']")) {
       return;
     }
 
