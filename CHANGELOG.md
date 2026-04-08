@@ -1,5 +1,33 @@
 # Changelog
 
+## v1.2.0-beta
+
+### Gemini Support
+- Add Gemini (gemini.google.com) as supported platform
+- Site-profile-aware rail positioning and UI overlap protection
+- Inline text highlighting for Gemini responses
+
+### Onboarding
+- Add first-use onboarding popup with 3-step guide (drag → MARK → saved)
+
+### i18n
+- Korean/English UI language support (auto-detected via browser language)
+- 36 user-facing strings translated across 9 files
+
+### UI
+- Save popup restyled with dark theme matching patchlog (#1e1e1e, #e87840)
+- Color palette hidden from save popup (compact layout)
+- Save button aligned with MARK button position for minimal mouse movement
+- GitHub link added to update banner
+- Patchlog subtitle label added
+
+### Improvements
+- Add global box-sizing: border-box to #cgptbm-root scope
+- Add CSS [hidden] attribute protection for display-overridden elements
+- Fix onboarding/banner display race condition with sequential loading
+- Add translated release notes (ko/en) via RELEASE_NOTES_I18N
+- Remove unused legacy RELEASE_NOTES constant
+
 ## v1.1.0
 
 ### Code Modularization

@@ -6,7 +6,7 @@
 
 import state from './state.js';
 import { normalizeText, fingerprintText } from './text.js';
-import { getScopeRoot, collectAnchorBlocks, getElementText, findMessageContainer } from './dom.js';
+import { getScopeRoot, collectAnchorBlocks, getElementText, findMessageContainer, getCurrentSiteProfile } from './dom.js';
 import { formatPopupDisplayText, isCodeAnchor } from './capture.js';
 import { closeSavePopup, closeBookmarkColorPicker } from './popup.js';
 import { closeBackupDropdown } from './rail-controls.js';
@@ -241,7 +241,12 @@ export async function handleBookmarkClick(bookmarkId) {
   const sessionId = ++state.navigateSessionId;
 
   let target = resolveBookmarkTarget(bookmark);
-  const preferBlockHighlight = shouldPreferBlockHighlight(bookmark);
+  var preferBlockHighlight = shouldPreferBlockHighlight(bookmark);
+  var _profile = getCurrentSiteProfile();
+  if (preferBlockHighlight && _profile && _profile.id === "gemini"
+      && target && target.matches && target.matches("p, li, pre, blockquote, h1, h2, h3, h4, h5, h6")) {
+    preferBlockHighlight = false;
+  }
   if (!target) {
     _cb.pulseTab(bookmarkId);
     finishHiddenScrollTransaction();

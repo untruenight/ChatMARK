@@ -70,6 +70,7 @@ const state = {
   selectionAnchorCachedAt: 0,
   selectionPopupPosition: null,
   selectionUiFrame: 0,
+  pointerSelectionActive: false,
 
   // ---- Timers ----
   activeTimer: 0,

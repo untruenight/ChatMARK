@@ -276,17 +276,19 @@ function buildSelectionUiCandidatePosition(rect, vertical, horizontal) {
       window.innerWidth - SELECTION_TRIGGER_WIDTH - SELECTION_UI_VIEWPORT_GAP
     );
 
-  let popupTop = vertical === "above"
-    ? triggerTop - SELECTION_POPUP_HEIGHT - SELECTION_UI_GAP
-    : triggerTop + SELECTION_TRIGGER_HEIGHT + SELECTION_UI_GAP;
+  // Align popup Save button center with MARK button center.
+  // Save button center offset within popup: top 23px, left 172px.
+  var saveOffsetCenterTop = 23;
+  var saveOffsetCenterLeft = 111;
+  var triggerCenterTop = triggerTop + Math.round(SELECTION_TRIGGER_HEIGHT / 2);
+  var triggerCenterLeft = triggerLeft + Math.round(SELECTION_TRIGGER_WIDTH / 2);
 
-  if (vertical === "above" && popupTop < SELECTION_UI_VIEWPORT_GAP) {
-    popupTop = rect.bottom + SELECTION_UI_GAP;
-  } else if (
-    vertical === "below" &&
-    popupTop + SELECTION_POPUP_HEIGHT > window.innerHeight - SELECTION_UI_VIEWPORT_GAP
-  ) {
-    popupTop = rect.top - SELECTION_POPUP_HEIGHT - SELECTION_UI_GAP;
+  let popupTop = triggerCenterTop - saveOffsetCenterTop;
+
+  if (popupTop < SELECTION_UI_VIEWPORT_GAP) {
+    popupTop = SELECTION_UI_VIEWPORT_GAP;
+  } else if (popupTop + SELECTION_POPUP_HEIGHT > window.innerHeight - SELECTION_UI_VIEWPORT_GAP) {
+    popupTop = window.innerHeight - SELECTION_POPUP_HEIGHT - SELECTION_UI_VIEWPORT_GAP;
   }
 
   popupTop = clamp(
@@ -295,17 +297,11 @@ function buildSelectionUiCandidatePosition(rect, vertical, horizontal) {
     window.innerHeight - SELECTION_POPUP_HEIGHT - SELECTION_UI_VIEWPORT_GAP
   );
 
-  const popupLeft = horizontal === "left"
-    ? clamp(
-      rect.left,
-      SELECTION_UI_VIEWPORT_GAP,
-      window.innerWidth - SELECTION_POPUP_WIDTH - SELECTION_UI_VIEWPORT_GAP
-    )
-    : clamp(
-      rect.right - SELECTION_POPUP_WIDTH,
-      SELECTION_UI_VIEWPORT_GAP,
-      window.innerWidth - SELECTION_POPUP_WIDTH - SELECTION_UI_VIEWPORT_GAP
-    );
+  const popupLeft = clamp(
+    triggerCenterLeft - saveOffsetCenterLeft,
+    SELECTION_UI_VIEWPORT_GAP,
+    window.innerWidth - SELECTION_POPUP_WIDTH - SELECTION_UI_VIEWPORT_GAP
+  );
 
   return {
     triggerTop: Math.round(triggerTop),
@@ -497,7 +493,14 @@ function updateSelectionTrigger() {
   showSelectionTrigger(selectionInfo.anchor, position);
 }
 
-export function scheduleSelectionUiUpdate() {
+export function scheduleSelectionUiUpdate(event) {
+  // Ignore programmatic selectionchange events (e.g. Gemini streaming renders).
+  // Only respond to selectionchange while the user is actively dragging (pointer down),
+  // or to mouseup events which always indicate end of a user gesture.
+  if (event && event.type === "selectionchange" && !state.pointerSelectionActive) {
+    return;
+  }
+
   window.cancelAnimationFrame(state.selectionUiFrame);
   state.selectionUiFrame = window.requestAnimationFrame(function () {
     state.selectionUiFrame = 0;

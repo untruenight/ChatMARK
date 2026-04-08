@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ChatMARK",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Save lightweight bookmark tabs for ChatGPT web conversations, with current-page bookmark search.",
   "icons": {
     "16": "icons/icon-16.png",
@@ -22,7 +22,8 @@
     {
       "matches": [
         "https://chatgpt.com/*",
-        "https://chat.openai.com/*"
+        "https://chat.openai.com/*",
+        "https://gemini.google.com/*"
       ],
       "js": [
         "content.js"
@@ -41,7 +42,8 @@
       "resources": ["fonts/*.woff2"],
       "matches": [
         "https://chatgpt.com/*",
-        "https://chat.openai.com/*"
+        "https://chat.openai.com/*",
+        "https://gemini.google.com/*"
       ]
     }
   ]

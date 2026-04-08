@@ -21,15 +21,15 @@ import {
   BOOKMARK_UI_STATE_STORAGE_KEY,
   LEGACY_STORAGE_KEYS,
   SELECTION_TRIGGER_LABEL,
-  ROOT_RIGHT_OFFSET,
-  RAIL_VIEWPORT_DEFAULT_TOP,
   RAIL_VIEWPORT_WIDTH,
   RAIL_LAYER_LEFT_BLEED,
   RAIL_LAYER_RIGHT_BLEED,
   DEFAULT_RAIL_OPACITY,
   APP_VERSION,
   UPDATE_DISMISSED_STORAGE_KEY,
-  RELEASE_NOTES
+  ONBOARDING_DISMISSED_STORAGE_KEY,
+  msg,
+  getReleaseNotes
 } from './constants.js';
 
 // --- Store ---
@@ -93,6 +93,8 @@ import {
   pulseTab,
   resetAddTabFeedback,
   syncBookmarkHistoryControlsToCurrentRail,
+  getProfileRootRightOffset,
+  getProfileViewportDefaultTop,
   getPopupLayout,
   isPopupContentExpanded,
   setPopupContentExpanded,
@@ -364,7 +366,7 @@ setHistoryCallbacks({
       syncFrameRelayDebugState();
       scheduleSandboxCardTriggerRender();
       waitForBookmarkSiteReady(function () { loadBookmarks(); });
-      showUpdateBannerIfNeeded();
+      showUpdateBannerIfNeeded().then(showOnboardingIfNeeded);
     };
 
     if (document.body) {
@@ -402,8 +404,8 @@ setHistoryCallbacks({
         existingRoot.remove();
       } else {
       state.root = existingRoot;
-      state.root.style.setProperty("--cgptbm-root-right", ROOT_RIGHT_OFFSET + "px");
-      state.root.style.setProperty("--cgptbm-rail-viewport-top", RAIL_VIEWPORT_DEFAULT_TOP + "px");
+      state.root.style.setProperty("--cgptbm-root-right", getProfileRootRightOffset() + "px");
+      state.root.style.setProperty("--cgptbm-rail-viewport-top", getProfileViewportDefaultTop() + "px");
       state.root.style.setProperty("--cgptbm-rail-viewport-width", RAIL_VIEWPORT_WIDTH + "px");
       state.root.style.setProperty("--cgptbm-rail-scroll-hitbox-width", RAIL_VIEWPORT_WIDTH + "px");
       state.root.style.setProperty("--cgptbm-rail-layer-left-bleed", RAIL_LAYER_LEFT_BLEED + "px");
@@ -448,8 +450,8 @@ setHistoryCallbacks({
 
     const root = document.createElement("div");
     root.id = ROOT_ID;
-    root.style.setProperty("--cgptbm-root-right", ROOT_RIGHT_OFFSET + "px");
-    root.style.setProperty("--cgptbm-rail-viewport-top", RAIL_VIEWPORT_DEFAULT_TOP + "px");
+    root.style.setProperty("--cgptbm-root-right", getProfileRootRightOffset() + "px");
+    root.style.setProperty("--cgptbm-rail-viewport-top", getProfileViewportDefaultTop() + "px");
     root.style.setProperty("--cgptbm-rail-viewport-width", RAIL_VIEWPORT_WIDTH + "px");
     root.style.setProperty("--cgptbm-rail-scroll-hitbox-width", RAIL_VIEWPORT_WIDTH + "px");
     root.style.setProperty("--cgptbm-rail-layer-left-bleed", RAIL_LAYER_LEFT_BLEED + "px");
@@ -484,7 +486,7 @@ setHistoryCallbacks({
     const railScrollbarThumb = document.createElement("button");
     railScrollbarThumb.type = "button";
     railScrollbarThumb.className = "cgptbm-rail-scrollbar-thumb";
-    railScrollbarThumb.setAttribute("aria-label", "Scroll bookmark rail");
+    railScrollbarThumb.setAttribute("aria-label", msg("scrollRail"));
 
     railScrollbarTrack.appendChild(railScrollbarThumb);
     railScrollbar.appendChild(railScrollbarTrack);
@@ -556,6 +558,9 @@ setHistoryCallbacks({
     window.addEventListener("pointercancel", handleBookmarkDragPointerEnd, true);
     window.addEventListener("keydown", handleKeydown, true);
     document.addEventListener("pointermove", handleDocumentPointerMove, true);
+    document.addEventListener("pointerdown", function () { state.pointerSelectionActive = true; }, true);
+    window.addEventListener("pointerup", function () { state.pointerSelectionActive = false; }, true);
+    window.addEventListener("pointercancel", function () { state.pointerSelectionActive = false; }, true);
     document.addEventListener("selectionchange", scheduleSelectionUiUpdate);
     document.addEventListener("mouseup", scheduleSelectionUiUpdate, true);
     window.addEventListener("pointermove", handlePopupResizePointerMove, true);
@@ -692,7 +697,7 @@ setHistoryCallbacks({
         return;
       }
 
-      var notes = RELEASE_NOTES[APP_VERSION];
+      var notes = getReleaseNotes(APP_VERSION);
       if (!notes || !notes.length) {
         return;
       }
@@ -705,26 +710,31 @@ setHistoryCallbacks({
       var title = document.createElement("div");
       title.className = "cgptbm-update-banner__title";
       if (isFirstInstall) {
-        var prefix = document.createElement("span");
-        prefix.className = "cgptbm-update-banner__title-prefix";
-        prefix.textContent = "Thanks for having ";
-        var brand = document.createElement("span");
-        var brandChat = document.createElement("span");
-        brandChat.className = "cgptbm-update-banner__brand-chat";
-        brandChat.textContent = "Chat";
-        var brandMark = document.createElement("span");
-        brandMark.textContent = "MARK";
-        brand.appendChild(brandChat);
-        brand.appendChild(brandMark);
-        title.appendChild(prefix);
-        title.appendChild(brand);
+        var _koTitle = msg("bannerThanks");
+        if (_koTitle !== "Thanks for having ") {
+          title.textContent = _koTitle;
+        } else {
+          var prefix = document.createElement("span");
+          prefix.className = "cgptbm-update-banner__title-prefix";
+          prefix.textContent = _koTitle;
+          var brand = document.createElement("span");
+          var brandChat = document.createElement("span");
+          brandChat.className = "cgptbm-update-banner__brand-chat";
+          brandChat.textContent = "Chat";
+          var brandMark = document.createElement("span");
+          brandMark.textContent = "MARK";
+          brand.appendChild(brandChat);
+          brand.appendChild(brandMark);
+          title.appendChild(prefix);
+          title.appendChild(brand);
+        }
       } else {
-        title.textContent = "ChatMARK updated to v" + APP_VERSION;
+        title.textContent = msg("bannerUpdated") + APP_VERSION + (msg("bannerUpdatedSuffix") || "");
       }
 
       var subtitle = document.createElement("div");
       subtitle.className = "cgptbm-update-banner__subtitle";
-      subtitle.textContent = "v" + APP_VERSION;
+      subtitle.textContent = "v" + APP_VERSION + msg("bannerPatchlog");
 
       var list = document.createElement("ul");
       list.className = "cgptbm-update-banner__list";
@@ -737,28 +747,108 @@ setHistoryCallbacks({
       var closeBtn = document.createElement("button");
       closeBtn.type = "button";
       closeBtn.className = "cgptbm-update-banner__close";
-      closeBtn.textContent = "OK";
+      closeBtn.textContent = msg("bannerOk");
       closeBtn.addEventListener("click", function () {
         banner.remove();
         storageSet({ [UPDATE_DISMISSED_STORAGE_KEY]: APP_VERSION });
         state._updateBannerDismissed = APP_VERSION;
+        showOnboardingIfNeeded();
       });
 
       var credit = document.createElement("div");
       credit.className = "cgptbm-update-banner__credit";
-      credit.textContent = "ChatMARK by untruenight";
+      credit.textContent = msg("bannerCredit");
+
+      var ghLink = document.createElement("a");
+      ghLink.className = "cgptbm-update-banner__link";
+      ghLink.href = "https://github.com/untruenight/ChatMARK";
+      ghLink.target = "_blank";
+      ghLink.rel = "noopener noreferrer";
+      ghLink.textContent = "github.com/untruenight/ChatMARK";
 
       banner.appendChild(title);
       banner.appendChild(subtitle);
       banner.appendChild(list);
       banner.appendChild(closeBtn);
       banner.appendChild(credit);
+      banner.appendChild(ghLink);
 
       if (state.root) {
         state.root.appendChild(banner);
       }
     } catch (error) {
       logWarn("showUpdateBannerIfNeeded failed", error);
+    }
+  }
+
+  // ---- showOnboardingIfNeeded: 첫 사용자 온보딩 ----
+  async function showOnboardingIfNeeded() {
+    try {
+      if (state._onboardingDismissed) {
+        return;
+      }
+      // Skip if update banner is currently displayed
+      if (state.root && state.root.querySelector(".cgptbm-update-banner")) {
+        return;
+      }
+      var raw = await storageGet([ONBOARDING_DISMISSED_STORAGE_KEY]);
+      if (raw[ONBOARDING_DISMISSED_STORAGE_KEY]) {
+        return;
+      }
+
+      var overlay = document.createElement("div");
+      overlay.className = "cgptbm-onboarding";
+
+      var card = document.createElement("div");
+      card.className = "cgptbm-onboarding__card";
+
+      var title = document.createElement("div");
+      title.className = "cgptbm-onboarding__title";
+      title.textContent = msg("onboardingTitle");
+
+      var steps = document.createElement("div");
+      steps.className = "cgptbm-onboarding__steps";
+
+      var stepData = [
+        { num: "1", text: msg("onboardingStep1") },
+        { num: "2", text: msg("onboardingStep2") },
+        { num: "3", text: msg("onboardingStep3") }
+      ];
+
+      stepData.forEach(function (s) {
+        var step = document.createElement("div");
+        step.className = "cgptbm-onboarding__step";
+        var num = document.createElement("span");
+        num.className = "cgptbm-onboarding__step-num";
+        num.textContent = s.num;
+        var text = document.createElement("span");
+        text.className = "cgptbm-onboarding__step-text";
+        text.textContent = s.text;
+        step.appendChild(num);
+        step.appendChild(text);
+        steps.appendChild(step);
+      });
+
+      var closeBtn = document.createElement("button");
+      closeBtn.type = "button";
+      closeBtn.className = "cgptbm-onboarding__close";
+      closeBtn.textContent = msg("onboardingClose");
+      closeBtn.addEventListener("click", function () {
+        overlay.remove();
+        storageSet({ [ONBOARDING_DISMISSED_STORAGE_KEY]: "1" });
+        state._onboardingDismissed = true;
+      });
+
+      card.appendChild(title);
+      card.appendChild(steps);
+      card.appendChild(closeBtn);
+      overlay.appendChild(card);
+
+      if (state.root) {
+        state.root.appendChild(overlay);
+      }
+    } catch (error) {
+      logWarn("showOnboardingIfNeeded failed", error);
     }
   }
 

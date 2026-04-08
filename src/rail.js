@@ -13,6 +13,8 @@ import state from './state.js';
 import {
   syncRailViewportTop,
   syncRailViewportWidth,
+  getProfileRootRightOffset,
+  getProfileViewportDefaultTop,
   bindTopRightUiProtectionObserver,
   scheduleTopRightUiProtectionRefresh,
   getRailViewportTop,
@@ -223,6 +225,8 @@ export { handleBookmarkEdit };
 // Re-exports from rail-viewport.js (Phase A)
 export {
   syncRailViewportWidth,
+  getProfileRootRightOffset,
+  getProfileViewportDefaultTop,
   bindTopRightUiProtectionObserver,
   scheduleTopRightUiProtectionRefresh,
   getRailViewportTop,

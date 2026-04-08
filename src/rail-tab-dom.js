@@ -7,7 +7,7 @@
 
 import state from './state.js';
 import { createSvgElement } from './dom.js';
-import { COLLAPSED_TAB_HEIGHT } from './constants.js';
+import { COLLAPSED_TAB_HEIGHT, msg } from './constants.js';
 
 // Popup DOM sub-module (direct import per Phase E3 rules)
 import { createTabPopupElement } from './rail-popup-dom.js';
@@ -59,7 +59,7 @@ export function createTabElement(options) {
   if (options.title) {
     button.title = options.title;
   }
-  button.setAttribute("aria-label", options.label || "Bookmark");
+  button.setAttribute("aria-label", options.label || msg("bookmarkLabel"));
 
   const edge = document.createElement("span");
   edge.className = "cgptbm-tab__edge";
